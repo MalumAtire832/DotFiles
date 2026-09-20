@@ -1,0 +1,227 @@
+# Oxocarbon -- IBM Carbon dark
+# https://github.com/nyoom-engineering/oxocarbon
+#
+# Port of the reference Neovim theme, kept in step with the rest of the
+# desktop: kitty, sway, waybar, btop, cava, zellij and nvim.
+# Syntax scopes follow oxocarbon.nvim's treesitter groups, so the same file
+# looks the same in hx and nvim.
+#
+# One deviation, the same one made everywhere else: upstream Oxocarbon ships
+# no yellow, so warnings come out purple. Warnings here use IBM Carbon
+# yellow-30 instead.
+
+# Syntax highlighting
+
+"attribute" = "lightblue"
+
+"type" = "blue"
+"type.builtin" = "blue"
+"type.parameter" = "blue"
+"type.enum.variant" = "purple"
+
+"constructor" = "blue"
+
+"constant" = "purple"
+"constant.builtin" = "teal"
+"constant.builtin.boolean" = "blue"
+"constant.character" = "purple"
+"constant.character.escape" = "lightblue"
+"constant.numeric" = "lightblue"
+
+"string" = "purple"
+"string.regexp" = "teal"
+"string.special" = "lightblue"
+"string.special.path" = "lightblue"
+"string.special.url" = { fg = "purple", modifiers = ["underlined"] }
+"string.special.symbol" = "lightblue"
+
+"comment" = { fg = "gray40", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "gray40", modifiers = ["italic"] }
+"comment.line.documentation" = { fg = "gray40", modifiers = ["italic"] }
+"comment.unused" = { fg = "gray30", modifiers = ["italic"] }
+
+"variable" = "fg"
+"variable.builtin" = "fg"
+"variable.parameter" = "fg"
+"variable.other.member" = "magenta"
+"variable.other.member.private" = "magenta"
+
+"label" = "lightblue"
+
+"punctuation" = "cyan"
+"punctuation.delimiter" = "cyan"
+"punctuation.bracket" = "cyan"
+"punctuation.special" = "cyan"
+
+"keyword" = "blue"
+"keyword.control" = "blue"
+"keyword.control.conditional" = "blue"
+"keyword.control.repeat" = "blue"
+"keyword.control.import" = "blue"
+"keyword.control.return" = "blue"
+"keyword.control.exception" = "lightblue"
+"keyword.operator" = "cyan"
+"keyword.directive" = "blue"
+"keyword.function" = "cyan"
+"keyword.storage" = "blue"
+"keyword.storage.type" = "blue"
+"keyword.storage.modifier" = "blue"
+
+"operator" = "blue"
+
+"function" = { fg = "pink", modifiers = ["bold"] }
+"function.builtin" = "pink"
+"function.method" = "teal"
+"function.method.private" = "teal"
+"function.macro" = "teal"
+"function.special" = "teal"
+
+"tag" = "blue"
+"tag.builtin" = "blue"
+
+"namespace" = "teal"
+
+"special" = "fg"
+
+# Markup
+
+"markup.heading" = "magenta"
+"markup.heading.marker" = "magenta"
+"markup.heading.1" = "magenta"
+"markup.heading.2" = "magenta"
+"markup.heading.3" = "magenta"
+"markup.heading.4" = "magenta"
+"markup.heading.5" = "magenta"
+"markup.heading.6" = "magenta"
+"markup.list" = "cyan"
+"markup.list.numbered" = "cyan"
+"markup.list.unnumbered" = "cyan"
+"markup.list.checked" = "green"
+"markup.list.unchecked" = "cyan"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link" = "purple"
+"markup.link.url" = { fg = "purple", modifiers = ["underlined"] }
+"markup.link.label" = { fg = "cyan", modifiers = ["underlined"] }
+"markup.link.text" = "cyan"
+"markup.quote" = { fg = "cyan", modifiers = ["italic"] }
+"markup.raw" = "purple"
+"markup.raw.inline" = "purple"
+"markup.raw.block" = "purple"
+
+# Diff
+
+"diff.plus" = "teal"
+"diff.plus.gutter" = "teal"
+"diff.minus" = "magenta"
+"diff.minus.gutter" = "magenta"
+"diff.delta" = "blue"
+"diff.delta.gutter" = "blue"
+"diff.delta.moved" = "purple"
+"diff.delta.conflict" = "yellow"
+
+# UI elements
+
+"ui.background" = { fg = "fg", bg = "base" }
+"ui.background.separator" = "gray30"
+
+"ui.cursor" = { fg = "base", bg = "fg" }
+"ui.cursor.normal" = { fg = "base", bg = "blue" }
+"ui.cursor.insert" = { fg = "base", bg = "pink" }
+"ui.cursor.select" = { fg = "base", bg = "purple" }
+"ui.cursor.match" = { fg = "base", bg = "brightblue" }
+"ui.cursor.primary" = { fg = "base", bg = "bright" }
+"ui.cursor.primary.normal" = { fg = "base", bg = "blue" }
+"ui.cursor.primary.insert" = { fg = "base", bg = "pink" }
+"ui.cursor.primary.select" = { fg = "base", bg = "purple" }
+
+"ui.gutter" = { bg = "base" }
+"ui.gutter.selected" = { bg = "surface" }
+
+"ui.linenr" = { fg = "gray40" }
+"ui.linenr.selected" = { fg = "fg" }
+
+"ui.statusline" = { fg = "fg", bg = "surface" }
+"ui.statusline.inactive" = { fg = "gray40", bg = "surface" }
+"ui.statusline.normal" = { fg = "base", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "base", bg = "pink", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "base", bg = "purple", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "gray30" }
+
+"ui.bufferline" = { fg = "gray40", bg = "surface" }
+"ui.bufferline.active" = { fg = "bright", bg = "base" }
+"ui.bufferline.background" = { bg = "surface" }
+
+"ui.popup" = { fg = "fg", bg = "surface" }
+"ui.popup.info" = { fg = "blue", bg = "surface" }
+"ui.window" = { fg = "gray30" }
+"ui.help" = { fg = "fg", bg = "surface" }
+
+"ui.picker.header" = { fg = "gray40" }
+"ui.picker.header.column" = { fg = "gray40" }
+"ui.picker.header.column.active" = { fg = "brightblue", modifiers = ["bold"] }
+
+"ui.text" = "fg"
+"ui.text.focus" = { fg = "bright", bg = "gray30", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "gray40" }
+"ui.text.info" = { fg = "blue" }
+"ui.text.directory" = { fg = "cyan" }
+
+"ui.virtual.ruler" = { bg = "surface" }
+"ui.virtual.whitespace" = "gray30"
+"ui.virtual.indent-guide" = "gray30"
+"ui.virtual.inlay-hint" = { fg = "gray40", modifiers = ["italic"] }
+"ui.virtual.wrap" = "gray30"
+"ui.virtual.jump-label" = { fg = "base", bg = "yellow", modifiers = ["bold"] }
+
+"ui.selection" = { bg = "gray30" }
+"ui.selection.primary" = { bg = "gray40" }
+
+"ui.cursorline.primary" = { bg = "surface" }
+"ui.cursorcolumn.primary" = { bg = "surface" }
+
+"ui.highlight" = { bg = "gray30" }
+"ui.highlight.frameline" = { bg = "surface" }
+
+"ui.menu" = { fg = "fg", bg = "surface" }
+"ui.menu.selected" = { fg = "bright", bg = "gray30", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "cyan", bg = "gray30" }
+
+"ui.debug.breakpoint" = { fg = "magenta" }
+"ui.debug.active" = { fg = "yellow" }
+
+# Diagnostics
+
+"diagnostic" = { fg = "gray40" }
+"diagnostic.error" = { underline = { color = "magenta", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "fg", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"error" = "magenta"
+"warning" = "yellow"
+"info" = "blue"
+"hint" = "fg"
+
+[palette]
+# Oxocarbon's own base00..base15, named for what they do here.
+base      = "#161616"  # base00
+surface   = "#262626"  # base01
+gray30    = "#393939"  # base02
+gray40    = "#525252"  # base03
+fg        = "#d0d0d0"  # base04
+bright    = "#f2f2f2"  # base05
+white     = "#ffffff"  # base06
+teal      = "#08bdba"  # base07
+cyan      = "#3ddbd9"  # base08
+blue      = "#78a9ff"  # base09
+magenta   = "#ee5396"  # base10
+brightblue = "#33b1ff" # base11
+pink      = "#ff7eb6"  # base12
+green     = "#42be65"  # base13
+purple    = "#be95ff"  # base14
+lightblue = "#82cfff"  # base15
+yellow    = "#f1c21b"  # IBM Carbon yellow-30, not part of upstream Oxocarbon

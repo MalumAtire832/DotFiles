@@ -1,0 +1,60 @@
+# Oxocarbon (IBM Carbon dark) for btop
+# Palette: https://github.com/nyoom-engineering/oxocarbon
+# Meter ramps follow the same cool->hot order as the cava gradient
+# in ~/.config/cava/config and ~/.config/waybar/scripts/cava.sh.
+
+# Main
+theme[main_bg]="#161616"
+theme[main_fg]="#dde1e6"
+theme[title]="#f2f4f8"
+theme[hi_fg]="#33b1ff"
+theme[selected_bg]="#393939"
+theme[selected_fg]="#82cfff"
+theme[inactive_fg]="#525252"
+theme[graph_text]="#dde1e6"
+theme[meter_bg]="#262626"
+theme[proc_misc]="#3ddbd9"
+
+# Boxes
+theme[cpu_box]="#33b1ff"
+theme[mem_box]="#42be65"
+theme[net_box]="#be95ff"
+theme[proc_box]="#ff7eb6"
+theme[div_line]="#393939"
+
+# Temperature: neutral -> warning -> critical (matches waybar thresholds)
+theme[temp_start]="#08bdba"
+theme[temp_mid]="#f1c21b"
+theme[temp_end]="#ee5396"
+
+# CPU load: teal -> blue -> magenta (the cava ramp)
+theme[cpu_start]="#08bdba"
+theme[cpu_mid]="#33b1ff"
+theme[cpu_end]="#ee5396"
+
+# Memory: free (green), cached (purple), available (cyan), used (hot)
+theme[free_start]="#42be65"
+theme[free_mid]="#42be65"
+theme[free_end]="#08bdba"
+theme[cached_start]="#be95ff"
+theme[cached_mid]="#be95ff"
+theme[cached_end]="#ff7eb6"
+theme[available_start]="#3ddbd9"
+theme[available_mid]="#3ddbd9"
+theme[available_end]="#82cfff"
+theme[used_start]="#f1c21b"
+theme[used_mid]="#ff7eb6"
+theme[used_end]="#ee5396"
+
+# Network
+theme[download_start]="#3ddbd9"
+theme[download_mid]="#33b1ff"
+theme[download_end]="#82cfff"
+theme[upload_start]="#be95ff"
+theme[upload_mid]="#ff7eb6"
+theme[upload_end]="#ee5396"
+
+# Process list gradient: same ramp as CPU
+theme[process_start]="#08bdba"
+theme[process_mid]="#33b1ff"
+theme[process_end]="#ee5396"

@@ -1,0 +1,19 @@
+# Oxocarbon — IBM Carbon dark
+# https://github.com/nyoom-engineering/oxocarbon
+#
+# Borders follow sway's window colours: blue for a normal notification,
+# magenta for an urgent one, matching client.focused and client.urgent.
+
+background-color=#161616
+text-color=#dde1e6
+border-color=#33b1ff
+progress-color=over #262626
+
+font=Iosevka Nerd Font 12
+
+[urgency=low]
+border-color=#525252
+text-color=#dde1e6
+
+[urgency=high]
+border-color=#ee5396

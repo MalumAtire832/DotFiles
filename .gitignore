@@ -1,0 +1,20 @@
+# Targeted exclusions. Everything else in this repository is tracked, so a
+# new configuration directory needs no change here -- just drop it in
+# config/ and re-run install.sh.
+
+# Timestamped backups left behind while editing.
+*.bak
+*.bak-*
+*.backup-*
+
+# Tool state written into a config directory.
+/config/sway/.claude/
+
+# Superseded catppuccin themes. Oxocarbon only.
+/config/btop/themes/catppuccin_mocha.theme
+/config/kitty/mocha.conf
+/config/sway/catppuccin-mocha.txt
+
+# Leftover alternates.
+/config/cava/config1
+/config/waybar/old/

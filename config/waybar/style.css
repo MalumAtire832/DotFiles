@@ -1,0 +1,213 @@
+/* Waybar — oxocarbon (IBM Carbon dark)
+ * Form: a continuous ruled row of cells, like a Carbon data table.
+ * Colour: neutral everywhere; hue appears only when a threshold trips.
+ */
+
+@define-color base      #161616;
+@define-color surface   #262626;
+@define-color overlay   #393939;
+@define-color muted     #525252;
+@define-color text      #dde1e6;
+@define-color bright    #f2f4f8;
+
+@define-color warning   #f1c21b;
+@define-color critical  #ee5396;
+@define-color good      #42be65;
+
+* {
+  font-family: "Iosevka Nerd Font", "Symbols Nerd Font", sans-serif;
+  font-size: 11pt;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  /* kill the inherited GTK box-shadow that rounds module edges */
+  box-shadow: none;
+  text-shadow: none;
+}
+
+window#waybar {
+  background-color: @base;
+  color: @text;
+  border-top: 1px solid @overlay;
+}
+
+/* ── the grid ──────────────────────────────────────────────────────
+ * Every module is a cell: same background, divided by a single rule
+ * on its left edge, no margin, so adjacent cells butt into one row.
+ */
+#workspaces,
+#mode,
+#window,
+#mpris,
+#custom-cava,
+#clock,
+#network,
+#cpu,
+#temperature,
+#memory,
+#custom-gpu,
+#custom-vram,
+#custom-gputemp,
+#pulseaudio,
+#pulseaudio.source,
+#bluetooth,
+#custom-dev0,
+#custom-dev1,
+#custom-dev2,
+#custom-dev3,
+#tray {
+  background-color: @surface;
+  color: @text;
+  padding: 0 0.9rem;
+  margin: 0;
+  border-left: 1px solid @overlay;
+}
+
+/* the window-title cell recedes: it is context, not data */
+#window {
+  color: @muted;
+  padding: 0 1.1rem;
+}
+window#waybar.empty #window {
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* ── workspaces ──────────────────────────────────────────────────── */
+#workspaces {
+  padding: 0;
+}
+#workspaces button {
+  background-color: @surface;
+  color: @muted;
+  padding: 0 0.85rem;
+  margin: 0;
+  border-left: 1px solid @overlay;
+  border-radius: 0;
+}
+#workspaces button:first-child {
+  border-left: none;
+}
+#workspaces button.visible {
+  color: @text;
+}
+#workspaces button.focused {
+  background-color: @overlay;
+  color: @bright;
+}
+#workspaces button.urgent {
+  background-color: @surface;
+  color: @critical;
+}
+#workspaces button:hover {
+  background-color: @overlay;
+  color: @bright;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* ── sway binding mode ───────────────────────────────────────────── */
+#mode {
+  background-color: @critical;
+  color: @base;
+}
+
+/* ── the cava carve-out: colour lives in the pango markup ────────── */
+#custom-cava {
+  font-family: "Iosevka Nerd Font", monospace;
+  padding: 0 0.7rem;
+  letter-spacing: -1px;
+}
+
+/* ── alarm states: recolour the value, never the glyph ───────────── */
+#cpu.warning,
+#memory.warning,
+#custom-gpu.warning,
+#custom-vram.warning,
+#custom-gputemp.warning,
+#custom-dev0.warning,
+#custom-dev1.warning,
+#custom-dev2.warning,
+#custom-dev3.warning,
+#pulseaudio.warning {
+  color: @warning;
+}
+
+#cpu.critical,
+#memory.critical,
+#custom-gpu.critical,
+#custom-vram.critical,
+#custom-gputemp.critical,
+#temperature.critical {
+  color: @critical;
+}
+
+/* ── greyed-out, not alarming ────────────────────────────────────── */
+#pulseaudio.muted,
+#pulseaudio.source.source-muted,
+#bluetooth.disabled,
+#bluetooth.off,
+
+#custom-gpu.disconnected,
+#mpris.paused,
+#mpris.stopped {
+  color: @muted;
+}
+
+/* ── genuinely wrong ─────────────────────────────────────────────── */
+#network.disconnected {
+  color: @critical;
+}
+
+/* ── critical mouse battery blinks; nothing else animates ────────── */
+@keyframes blink {
+  to {
+    color: @text;
+  }
+}
+#custom-dev0.critical,
+#custom-dev1.critical,
+#custom-dev2.critical,
+#custom-dev3.critical {
+  color: @critical;
+  animation-name: blink;
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+/* ── device island ───────────────────────────────────────────────
+ * Sits between the centre group and the telemetry cluster. The gap is
+ * what separates it; its left edge is closed by the first cell's own
+ * border, its right edge by the border here.
+ */
+#devices {
+  /* Centres the island in the empty space between the centre group and the
+   * telemetry cluster. Because the right box is right-anchored, the island's
+   * position is set entirely by this margin: it equals half the free space
+   * left over once the island's own width is taken out, i.e. (G - W) / 2
+   * measured at 3840px. Re-measure if the flanking groups change width. */
+  margin-right: 370px;
+  border-right: 1px solid @overlay;
+}
+
+/* ── tray ────────────────────────────────────────────────────────── */
+#tray {
+  padding: 0 0.6rem;
+}
+#tray menu {
+  background-color: @surface;
+  color: @text;
+  border: 1px solid @overlay;
+}
+
+tooltip {
+  background-color: @base;
+  border: 1px solid @overlay;
+}
+tooltip label {
+  color: @text;
+  padding: 2px;
+}

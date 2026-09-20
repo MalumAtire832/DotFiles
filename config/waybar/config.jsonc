@@ -1,0 +1,235 @@
+// Waybar — oxocarbon Carbon-grid layout
+// Two bars defined in one file: the dense dashboard on the 4K centre
+// monitor, and a workspaces-only strip on each portrait side monitor.
+//
+// Colour rule: values render neutral (#dde1e6) until a threshold trips.
+// Glyphs are pinned neutral with an inline pango span so that CSS state
+// colours recolour the NUMBER only. Cava is the deliberate exception.
+[
+  {
+    "name": "main",
+    "output": "HDMI-A-1",
+    "layer": "top",
+    "position": "bottom",
+    "height": 34,
+    "spacing": 0,
+
+    "modules-left": [
+      "sway/workspaces",
+      "sway/mode",
+      "sway/window"
+    ],
+    "modules-center": [
+      "mpris",
+      "custom/cava",
+      "clock"
+    ],
+    "modules-right": [
+      "group/devices",
+      "network",
+      "cpu",
+      "temperature",
+      "memory",
+      "custom/gpu",
+      "custom/vram",
+      "custom/gputemp",
+      "pulseaudio",
+      "pulseaudio#source",
+      "tray"
+    ],
+
+    // Its own island, separated from the telemetry cluster by a gap in CSS.
+    // Waybar has only left/centre/right boxes, so "between centre and right"
+    // is expressed as the first member of the right box plus that gap.
+    "group/devices": {
+      "orientation": "horizontal",
+      "modules": [
+        "bluetooth",
+        "custom/dev0",
+        "custom/dev1",
+        "custom/dev2",
+        "custom/dev3"
+      ]
+    },
+
+    "sway/workspaces": {
+      "disable-scroll": true,
+      // Workspaces are namespaced per monitor in sway/config (left 11-19,
+      // center 21-29, right 31-39). Map them back to the bare 1-9 the
+      // keybindings use, so each bar reads as its own monitor's set.
+      "format": "{icon}",
+      "format-icons": {
+        "11": "1", "12": "2", "13": "3", "14": "4", "15": "5", "16": "6", "17": "7", "18": "8", "19": "9",
+        "21": "1", "22": "2", "23": "3", "24": "4", "25": "5", "26": "6", "27": "7", "28": "8", "29": "9",
+        "31": "1", "32": "2", "33": "3", "34": "4", "35": "5", "36": "6", "37": "7", "38": "8", "39": "9",
+        "default": "·"
+      },
+      // Each bar draws only its own output's workspaces.
+      "all-outputs": false
+    },
+    "sway/mode": {
+      "format": "{}"
+    },
+    "sway/window": {
+      "swap-icon-label": false,
+      "format": "{title}",
+      "max-length": 60,
+      "separate-outputs": true
+    },
+
+    "mpris": {
+      "format": "<span color='#dde1e6'></span>  {dynamic}",
+      "format-paused": "<span color='#525252'></span>  {dynamic}",
+      "dynamic-order": ["title", "artist"],
+      "dynamic-len": 40,
+      "swap-icon-label": false,
+      "interval": 1,
+      "on-click": "playerctl play-pause",
+      "on-scroll-up": "playerctl previous",
+      "on-scroll-down": "playerctl next",
+      "tooltip-format": "{player}: {title}\n{artist} — {album}"
+    },
+    "custom/cava": {
+      "exec": "~/.config/waybar/scripts/cava.sh",
+      "tooltip": false
+    },
+    "clock": {
+      "format": "<span color='#dde1e6'></span>  {:%H:%M}",
+      "format-alt": "<span color='#dde1e6'></span>  {:%a %d %b %Y  %H:%M}",
+      "interval": 10,
+      "tooltip-format": "<tt>{calendar}</tt>",
+      "calendar": {
+        "mode": "month",
+        "format": {
+          "today": "<span color='#ee5396'><b>{}</b></span>"
+        }
+      }
+    },
+
+    "network": {
+      "interval": 1,
+      "format-ethernet": "<span color='#dde1e6'>↓</span> {bandwidthDownBytes:>10} <span color='#dde1e6'>↑</span> {bandwidthUpBytes:>10}",
+      "format-wifi": "<span color='#dde1e6'>↓</span> {bandwidthDownBytes:>10} <span color='#dde1e6'>↑</span> {bandwidthUpBytes:>10}",
+      "format-disconnected": "<span color='#dde1e6'></span>  offline",
+      "tooltip-format": "{ifname}  {ipaddr}/{cidr}\nvia {gwaddr}"
+    },
+    "cpu": {
+      "interval": 2,
+      "format": "<span color='#dde1e6'></span>  {usage}%",
+      "states": { "warning": 85, "critical": 95 },
+      "tooltip": true
+    },
+    "temperature": {
+      "hwmon-path-abs": "/sys/devices/pci0000:00/0000:00:18.3/hwmon",
+      "input-filename": "temp1_input",
+      "interval": 2,
+      "critical-threshold": 85,
+      "format": "<span color='#dde1e6'></span>  {temperatureC}°C",
+      "tooltip-format": "CPU package {temperatureC}°C"
+    },
+    "memory": {
+      "interval": 5,
+      "format": "<span color='#dde1e6'></span>  {used:0.1f}G",
+      "states": { "warning": 85, "critical": 95 },
+      "tooltip-format": "{used:0.1f}G used of {total:0.1f}G  ({percentage}%)\nswap {swapUsed:0.1f}G of {swapTotal:0.1f}G"
+    },
+
+    "custom/gpu": {
+      "exec": "~/.config/waybar/scripts/gpu.sh busy",
+      "return-type": "json",
+      "interval": 2,
+      "format": "<span color='#dde1e6'></span>  {}"
+    },
+    "custom/vram": {
+      "exec": "~/.config/waybar/scripts/gpu.sh vram",
+      "return-type": "json",
+      "interval": 5,
+      "format": "<span color='#dde1e6'></span>  {}"
+    },
+    "custom/gputemp": {
+      "exec": "~/.config/waybar/scripts/gpu.sh temp",
+      "return-type": "json",
+      "interval": 2,
+      "format": "<span color='#dde1e6'></span>  {}"
+    },
+
+    "pulseaudio": {
+      "format": "<span color='#dde1e6'>{icon}</span>  {volume}%",
+      "format-muted": "<span color='#dde1e6'></span>  muted",
+      "format-icons": { "default": ["", "", ""] },
+      "scroll-step": 2,
+      "on-click": "pactl set-sink-mute @DEFAULT_SINK@ toggle",
+      "on-click-right": "pavucontrol",
+      "tooltip-format": "{desc}  {volume}%"
+    },
+    "pulseaudio#source": {
+      "format": "{format_source}",
+      "format-source": "<span color='#dde1e6'></span>  {volume}%",
+      "format-source-muted": "<span color='#dde1e6'></span>  off",
+      "on-click": "pactl set-source-mute @DEFAULT_SOURCE@ toggle",
+      "tooltip-format": "{source_desc}"
+    },
+    "bluetooth": {
+      "swap-icon-label": false,
+      "format": "<span color='#dde1e6'></span>  {status}",
+      "format-connected": "<span color='#dde1e6'></span>  {num_connections}",
+      "format-disabled": "<span color='#dde1e6'></span>  off",
+      "format-off": "<span color='#dde1e6'></span>  off",
+      "tooltip-format-connected": "{device_enumerate}"
+    },
+    "custom/dev0": {
+      "exec": "~/.config/waybar/scripts/wireless-devices.sh 0",
+      "return-type": "json",
+      "interval": 60,
+      "format": "{}"
+    },
+    "custom/dev1": {
+      "exec": "~/.config/waybar/scripts/wireless-devices.sh 1",
+      "return-type": "json",
+      "interval": 60,
+      "format": "{}"
+    },
+    "custom/dev2": {
+      "exec": "~/.config/waybar/scripts/wireless-devices.sh 2",
+      "return-type": "json",
+      "interval": 60,
+      "format": "{}"
+    },
+    "custom/dev3": {
+      "exec": "~/.config/waybar/scripts/wireless-devices.sh 3",
+      "return-type": "json",
+      "interval": 60,
+      "format": "{}"
+    },
+    "tray": {
+      "icon-size": 16,
+      "spacing": 8
+    }
+  },
+
+  {
+    "name": "side",
+    "output": ["DP-1", "DP-2"],
+    "layer": "top",
+    "position": "bottom",
+    "height": 34,
+    "spacing": 0,
+
+    "modules-left": ["sway/workspaces"],
+    "modules-center": [],
+    "modules-right": [],
+
+    "sway/workspaces": {
+      "disable-scroll": true,
+      // See the note on the main bar: namespaced workspaces shown as 1-9.
+      "format": "{icon}",
+      "format-icons": {
+        "11": "1", "12": "2", "13": "3", "14": "4", "15": "5", "16": "6", "17": "7", "18": "8", "19": "9",
+        "21": "1", "22": "2", "23": "3", "24": "4", "25": "5", "26": "6", "27": "7", "28": "8", "29": "9",
+        "31": "1", "32": "2", "33": "3", "34": "4", "35": "5", "36": "6", "37": "7", "38": "8", "39": "9",
+        "default": "·"
+      },
+      "all-outputs": false
+    }
+  }
+]

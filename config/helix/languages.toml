@@ -1,0 +1,7 @@
+[language-server.csharp-ls]
+command = "csharp-ls"
+
+[[language]]
+name = "c-sharp"
+language-servers = ["csharp-ls"]
+auto-format = true

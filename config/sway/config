@@ -1,0 +1,280 @@
+
+
+
+#---------------#
+#   Variables   #
+#---------------#
+set $mod Mod4
+set $term kitty
+set $menu rofi -show drun
+
+# Colour scheme
+include oxocarbon.txt
+
+
+
+
+
+#--------------------------#
+#   Output configuration   #
+#--------------------------#
+#output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+
+set $monitor_left   DP-2
+set $monitor_center HDMI-A-1
+set $monitor_right  DP-1
+
+output $monitor_left   resolution 2560x1440@60Hz  position 0    0 scale 1 transform 270
+output $monitor_center resolution 3840x2160@120Hz position 1440 0 scale 1
+output $monitor_right  resolution 2560x1440@60Hz  position 5280 0 scale 1 transform 90
+
+output $monitor_left   bg $surface solid_color
+output $monitor_center bg ~/.config/sway/wallpapers/wallpaper_center_1.jpg fill
+output $monitor_right  bg $surface solid_color
+
+#-------------------------------#
+#   Per-monitor workspace sets   #
+#-------------------------------#
+# Each monitor owns a private set of nine workspaces. They are namespaced
+# <prefix><1-9> because sway has a single global workspace namespace; the
+# prefix is what makes "workspace 3" mean a different workspace per monitor.
+# ws.sh resolves the prefix from the focused output, so Super+N stays relative.
+#
+#   left   DP-2       11-19
+#   center HDMI-A-1   21-29
+#   right  DP-1       31-39
+
+workspace 11 output $monitor_left
+workspace 12 output $monitor_left
+workspace 13 output $monitor_left
+workspace 14 output $monitor_left
+workspace 15 output $monitor_left
+workspace 16 output $monitor_left
+workspace 17 output $monitor_left
+workspace 18 output $monitor_left
+workspace 19 output $monitor_left
+
+workspace 21 output $monitor_center
+workspace 22 output $monitor_center
+workspace 23 output $monitor_center
+workspace 24 output $monitor_center
+workspace 25 output $monitor_center
+workspace 26 output $monitor_center
+workspace 27 output $monitor_center
+workspace 28 output $monitor_center
+workspace 29 output $monitor_center
+
+workspace 31 output $monitor_right
+workspace 32 output $monitor_right
+workspace 33 output $monitor_right
+workspace 34 output $monitor_right
+workspace 35 output $monitor_right
+workspace 36 output $monitor_right
+workspace 37 output $monitor_right
+workspace 38 output $monitor_right
+workspace 39 output $monitor_right
+
+
+exec systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP DISPLAY DBUS_SESSION_BUS_ADDRESS
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP DISPLAY DBUS_SESSION_BUS_ADDRESS
+
+# Give each monitor a starting workspace from its own set, ending on the
+# center one so focus begins there. "exec" rather than "exec_always" so a
+# config reload does not yank you back to workspace 1 on every monitor.
+exec swaymsg 'workspace number 31; workspace number 11; workspace number 21'
+
+for_window [app_id="obsidian"] focus_on_window_activation focus
+
+# Godot
+for_window [class="Godot"] floating enable
+for_window [class="Godot" title=".* - Godot Engine$"] floating disable
+for_window [instance="Godot_Engine"] floating enable
+
+# Blender
+for_window [app_id="blender"] floating enable
+for_window [app_id="blender" title=".* - Blender [0-9]+\.[0-9]+"] floating disable
+
+#-------------------------#
+#   Input configuration   #
+#-------------------------#
+input type:keyboard {
+    xkb_layout us
+    xkb_variant dvorak
+    repeat_delay 250
+    repeat_rate 35
+
+    xkb_options compose:caps
+}
+
+
+
+
+    # Start a terminal
+    bindsym $mod+Return exec $term
+
+    # Kill focused window
+    bindsym $mod+Shift+q kill
+
+    # Start your launcher
+    bindsym $mod+Space exec ~/.config/rofi/launcher.sh
+
+    # Drag floating windows by holding down $mod and left mouse button.
+    # Resize them with right mouse button + $mod.
+    # Despite the name, also works for non-floating windows.
+    # Change normal to inverse to use left mouse button for resizing and right
+    # mouse button for dragging.
+    floating_modifier $mod normal
+
+    # Reload the configuration file
+    bindsym $mod+Shift+c reload
+
+    # Exit sway (logs you out of your Wayland session)
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+
+
+
+
+
+#-----------------------------#
+#   Movement & Multitasking   #
+#-----------------------------#
+
+# Move your focus around
+    bindsym $mod+Left focus left
+    bindsym $mod+Down focus down
+    bindsym $mod+Up focus up
+    bindsym $mod+Right focus right
+
+# Move the focused window around
+    bindsym $mod+Shift+Left move left
+    bindsym $mod+Shift+Down move down
+    bindsym $mod+Shift+Up move up
+    bindsym $mod+Shift+Right move right
+
+# Switch to workspace on the focused monitor
+# ws.sh maps N to this monitor's workspace N (11-19 / 21-29 / 31-39).
+    bindsym $mod+1 exec ~/.config/sway/ws.sh switch 1
+    bindsym $mod+2 exec ~/.config/sway/ws.sh switch 2
+    bindsym $mod+3 exec ~/.config/sway/ws.sh switch 3
+    bindsym $mod+4 exec ~/.config/sway/ws.sh switch 4
+    bindsym $mod+5 exec ~/.config/sway/ws.sh switch 5
+    bindsym $mod+6 exec ~/.config/sway/ws.sh switch 6
+    bindsym $mod+7 exec ~/.config/sway/ws.sh switch 7
+    bindsym $mod+8 exec ~/.config/sway/ws.sh switch 8
+    bindsym $mod+9 exec ~/.config/sway/ws.sh switch 9
+
+# Move focused container to a workspace on the focused monitor
+    bindsym $mod+Shift+1 exec ~/.config/sway/ws.sh move 1
+    bindsym $mod+Shift+2 exec ~/.config/sway/ws.sh move 2
+    bindsym $mod+Shift+3 exec ~/.config/sway/ws.sh move 3
+    bindsym $mod+Shift+4 exec ~/.config/sway/ws.sh move 4
+    bindsym $mod+Shift+5 exec ~/.config/sway/ws.sh move 5
+    bindsym $mod+Shift+6 exec ~/.config/sway/ws.sh move 6
+    bindsym $mod+Shift+7 exec ~/.config/sway/ws.sh move 7
+    bindsym $mod+Shift+8 exec ~/.config/sway/ws.sh move 8
+    bindsym $mod+Shift+9 exec ~/.config/sway/ws.sh move 9
+
+# Focus a specific monitor
+    bindsym $mod+Mod1+Left  focus output $monitor_left
+    bindsym $mod+Mod1+Up    focus output $monitor_center
+    bindsym $mod+Mod1+Right focus output $monitor_right
+
+# Send the focused window to a specific monitor and follow it there.
+# The explicit focus is not redundant: sway does not document where focus
+# lands after "move container to output", so we pin it.
+    bindsym $mod+Mod1+Shift+Left  move container to output $monitor_left;   focus output $monitor_left
+    bindsym $mod+Mod1+Shift+Up    move container to output $monitor_center; focus output $monitor_center
+    bindsym $mod+Mod1+Shift+Right move container to output $monitor_right;  focus output $monitor_right
+
+# Change window layouts
+    bindsym $mod+h splith
+    bindsym $mod+v splitv
+    
+    bindsym $mod+s layout stacking
+    bindsym $mod+w layout tabbed
+    bindsym $mod+e layout toggle split
+
+    bindsym $mod+f fullscreen
+
+    bindsym $mod+Shift+space floating toggle
+
+
+
+
+
+#-------------------------#
+#   Resizing containers   #
+#-------------------------#
+mode "resize" {
+    # left will shrink the containers width
+    # right will grow the containers width
+    # up will shrink the containers height
+    # down will grow the containers height
+    bindsym Left resize shrink width 10px
+    bindsym Down resize grow height 10px
+    bindsym Up resize shrink height 10px
+    bindsym Right resize grow width 10px
+
+    # Return to default mode
+    bindsym Escape exec "pkill -f ~/.config/sway/show-resize.sh"; mode "default"
+}
+bindsym $mod+r exec "~/.config/sway/show-resize.sh &"; mode "resize"
+
+
+
+
+
+#-------------------#
+#   Function Keys   #
+#-------------------#
+
+# Audio
+    bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+    bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+    bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+    bindsym XF86AudioMicMute exec pactl set-source-mute @DEFAULT_SOURCE@ toggle
+    bindsym XF86AudioPlay exec playerctl play-pause
+    bindsym XF86AudioNext exec playerctl next
+    bindsym XF86AudioPrev exec playerctl previous
+
+# Brightness
+    bindsym XF86MonBrightnessUp exec light -A 5
+    bindsym XF86MonBrightnessDown exec light -U 5
+
+# Make a sreenshot
+    bindsym Print exec grim -g "$(slurp)" ~/Pictures/Screenshots/$(date +%Y-%m-%d_%H-%M-%S).png
+    bindsym ctrl+Print exec grim -g "$(slurp)" - | wl-copy
+
+
+
+#-------------#
+#   Theming   #
+#-------------#
+
+    default_border pixel 3
+    default_floating_border pixel 3
+    gaps inner 5
+    gaps outer 0
+    smart_borders on
+    smart_gaps on
+
+    focus_follows_mouse no
+
+    exec_always  --no-startup-id  ~/.config/waybar/launch_waybar.sh &
+
+# Fonts
+    font "Roboto" 11
+
+# window colours: border background text #
+    client.focused          $blue    $blue    $base   $blue    $blue
+    client.focused_inactive $surface $base    $muted  $surface $surface
+    client.unfocused        $surface $base    $muted  $surface $surface
+    client.placeholder      $surface $base    $muted  $surface $surface
+    client.urgent           $magenta $magenta $base   $magenta $magenta
+    client.background       $base
+
+# set gtk+ theme #
+    #set $gnome-schema org.gnome.desktop.interface
+    #exec_always gsettings set $gnome-schema gtk-theme 'Catppuccin-Dark'
+    #exec_always gsettings set $gnome-schema font-name 'Roboto 11'
+    #exec_always gsettings set $gnome-schema cursor-theme 'Catppuccin-cursor'
