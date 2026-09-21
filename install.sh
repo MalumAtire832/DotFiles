@@ -1,44 +1,47 @@
 #!/usr/bin/env bash
 #
-# Link this repository's configuration into place.
+# Link this repository's configuration into place, installing what it needs.
 #
-# Idempotent: a target that is already the correct symlink is left alone, and
-# anything real found at a target path is moved to <path>.backup-<timestamp>
-# rather than overwritten. Safe to re-run after adding a directory.
+# The platform is detected, manifest.sh is consulted for what that platform
+# should receive, missing packages are installed, and the configuration is
+# linked. Idempotent: an already-correct symlink is left alone, anything real
+# found at a target path is moved to <path>.backup-<timestamp>, and no package
+# manager is invoked when nothing is missing.
+#
+# Usage: install.sh [--dry-run] [--help]
+#
+# Sourcing with DOTFILES_LIB_ONLY=1 defines the functions without running.
 
 set -euo pipefail
 
-files_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+files_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 stamp=$(date +%Y%m%d-%H%M%S)
 
-link() {
-    local src=$1 dest=$2
+# ---------------------------------------------------------------------------
+# Portability helpers
+#
+# Written for bash 3.2, which is what Apple ships at /bin/bash: indexed arrays
+# are available, associative arrays are not. GNU-only tools are avoided —
+# `readlink -f` and `realpath --relative-to=` are both absent or different on
+# BSD userlands.
+# ---------------------------------------------------------------------------
 
-    if [ -L "$dest" ] && [ "$(readlink -f "$dest")" = "$(readlink -f "$src")" ]; then
-        printf '  ok     %s\n' "$dest"
-        return
+resolve() {
+    # Print the absolute, symlink-free path of $1. Stands in for `readlink -f`.
+    # A nonexistent leaf is fine as long as its parent directory exists.
+    if [ -d "$1" ]; then
+        (cd -- "$1" && pwd -P)
+    else
+        printf '%s/%s\n' \
+            "$(cd -- "$(dirname -- "$1")" && pwd -P)" \
+            "$(basename -- "$1")"
     fi
-
-    if [ -e "$dest" ] || [ -L "$dest" ]; then
-        mv -- "$dest" "$dest.backup-$stamp"
-        printf '  backup %s.backup-%s\n' "$dest" "$stamp"
-    fi
-
-    mkdir -p -- "$(dirname "$dest")"
-    ln -s -- "$(realpath --relative-to="$(dirname "$dest")" "$src")" "$dest"
-    printf '  link   %s\n' "$dest"
 }
 
-printf 'Linking into ~/.config\n'
-for dir in "$files_dir"/config/*/; do
-    link "${dir%/}" "$HOME/.config/$(basename "$dir")"
-done
+main() {
+    printf 'not implemented yet\n'
+}
 
-printf 'Linking into $HOME\n'
-for entry in "$files_dir"/home/.*; do
-    name=$(basename "$entry")
-    case "$name" in . | ..) continue ;; esac
-    link "$entry" "$HOME/$name"
-done
-
-printf 'Done.\n'
+if [ "${DOTFILES_LIB_ONLY:-0}" != 1 ]; then
+    main "$@"
+fi
