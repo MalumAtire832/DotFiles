@@ -166,6 +166,45 @@ run_test test_resolve_follows_a_relative_symlink
 run_test test_resolve_fails_on_a_missing_parent
 run_test test_resolve_detects_a_symlink_loop
 
+# --------------------------------------------------------------------------
+# detect_platform()
+# --------------------------------------------------------------------------
+
+test_detect_platform_honours_the_override() {
+    assert_eq "$(DOTFILES_PLATFORM=fedora detect_platform)" "fedora" "override"
+}
+
+test_detect_platform_reports_macos_on_darwin() {
+    if [ "$(uname -s)" != Darwin ]; then
+        printf '  skip %s (not Darwin)\n' "$current_test"
+        return 0
+    fi
+    assert_eq "$(detect_platform)" "macos" "darwin"
+}
+
+test_detect_platform_reads_os_release_id_on_linux() {
+    if [ "$(uname -s)" != Linux ]; then
+        printf '  skip %s (not Linux)\n' "$current_test"
+        return 0
+    fi
+    local expected
+    expected=$(. /etc/os-release && printf '%s' "$ID")
+    assert_eq "$(detect_platform)" "$expected" "linux"
+}
+
+test_detect_platform_does_not_leak_os_release_variables() {
+    # /etc/os-release defines ID, NAME, VERSION and friends. Sourcing it in the
+    # caller's shell would clobber them, so it must happen in a subshell.
+    local ID="sentinel"
+    detect_platform >/dev/null
+    assert_eq "$ID" "sentinel" "no leak"
+}
+
+run_test test_detect_platform_honours_the_override
+run_test test_detect_platform_reports_macos_on_darwin
+run_test test_detect_platform_reads_os_release_id_on_linux
+run_test test_detect_platform_does_not_leak_os_release_variables
+
 printf '\n%d test(s), %d failure(s)\n' "$tests_run" "$tests_failed"
 
 # A mistyped filter would otherwise print "0 test(s), 0 failure(s)" and exit 0,

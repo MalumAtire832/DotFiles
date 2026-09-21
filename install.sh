@@ -64,6 +64,41 @@ resolve() {
     fi
 }
 
+detect_platform() {
+    # Print this machine's platform identifier: "macos", or the ID field from
+    # /etc/os-release on Linux ("fedora"). "unknown" when neither applies.
+    #
+    # Identifiers are distro-level rather than family-level because package
+    # names are distro-specific: rofi-wayland means nothing to apt. Set
+    # DOTFILES_PLATFORM to override, which is how the tests reach both paths.
+    if [ -n "${DOTFILES_PLATFORM:-}" ]; then
+        printf '%s\n' "$DOTFILES_PLATFORM"
+        return 0
+    fi
+
+    case "$(uname -s)" in
+        Darwin)
+            printf 'macos\n'
+            ;;
+        Linux)
+            if [ -r /etc/os-release ]; then
+                # In a subshell: os-release defines ID, NAME and VERSION, and
+                # sourcing it here would clobber the caller's variables.
+                (
+                    # shellcheck disable=SC1091
+                    . /etc/os-release
+                    printf '%s\n' "${ID:-unknown}"
+                )
+            else
+                printf 'unknown\n'
+            fi
+            ;;
+        *)
+            printf 'unknown\n'
+            ;;
+    esac
+}
+
 main() {
     printf 'not implemented yet\n'
 }
