@@ -1051,7 +1051,15 @@ run_test test_link_reports_ok_for_an_existing_file_link
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `tests/install_test.sh test_link`
-Expected: FAIL with `link: command not found`.
+Expected: FAIL — every `test_link_*` case red.
+
+Note the errors will NOT say `link: command not found`. `link` is a real
+system binary (`/bin/link` on macOS, a thin wrapper around the `link(2)`
+syscall), so calling it before the shell function exists invokes that instead
+and fails with its own messages, such as `link: ...: Is a directory`. The
+function shadows the binary once defined, which is fine — this script never
+wants the real `link` — but the red-phase output looks different from the
+other tasks'.
 
 - [ ] **Step 3: Implement `link()`**
 
@@ -2404,13 +2412,47 @@ Expected: the macOS run plans `zsh`, `helix`, `btop` only. The Fedora run plans 
 
 Run: `./install.sh`
 
-Expected: `helix` and `btop` are installed via brew (they were absent on the development machine); `zsh` and `rbenv` are reported as present and no install is attempted for them; `~/.config/helix`, `~/.config/btop`, `~/.zshrc`, `~/.zprofile` and `~/.zsh` become symlinks into the repository; `sway`, `waybar`, `rofi`, `mako`, `cava` and `kitty` never appear.
+Expected: every macOS package — `helix`, `btop`, `zsh`, `rbenv` — is reported
+as already present and **no package manager is invoked at all**. The user
+installed helix and btop themselves partway through this work, so the real
+install path is not exercised here; it is covered by the shimmed tests
+instead, which was a deliberate decision rather than an oversight.
+
+`~/.config/helix`, `~/.config/btop`, `~/.zshrc`, `~/.zprofile` and `~/.zsh`
+become symlinks into the repository. `sway`, `waybar`, `rofi`, `mako`, `cava`
+and `kitty` never appear.
+
+Two of those targets already exist as real files and will be backed up rather
+than overwritten — this is the designed behaviour and the first time it runs
+against anything that matters:
+
+- `~/.config/btop` holds btop's own generated config, created when it was
+  first run. It moves to `~/.config/btop.backup-<timestamp>`.
+- `~/.zshrc` is the user's live Oh My Zsh configuration, including a `GOPATH`
+  export added during a separate Go toolchain setup. It moves to
+  `~/.zshrc.backup-<timestamp>`, and the repository's very different shell
+  configuration takes its place. **The user has explicitly agreed to this**
+  and will reconcile the two from the backup afterwards. Say so in the summary
+  rather than letting them discover it at their next login.
 
 - [ ] **Step 6: Confirm the links**
 
 Run: `ls -la ~/.config/ | grep -E 'helix|btop|sway|waybar|rofi|mako|cava|kitty'; ls -la ~/.zshrc ~/.zprofile ~/.zsh`
 
-Expected: `helix` and `btop` are symlinks into `~/.files/config/`. None of the Wayland directories exist. The three home entries are symlinks.
+Expected: `helix` and `btop` are symlinks into `~/.files/config/`. None of the
+Wayland directories exist. The three home entries are symlinks.
+
+Then confirm the displaced files are safe, not gone:
+
+```bash
+ls -la ~/.config/btop.backup-* ~/.zshrc.backup-*
+```
+
+Expected: both exist. `~/.zshrc.backup-*` must still contain the user's Oh My
+Zsh configuration and its `GOPATH` line — check with
+`grep -c GOPATH ~/.zshrc.backup-*`, which must print 1. If that backup is
+missing or empty, stop and say so: the user's live shell configuration is in
+it, and nothing else holds a copy.
 
 - [ ] **Step 7: Confirm the second run is cheap**
 
