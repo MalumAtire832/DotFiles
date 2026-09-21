@@ -717,6 +717,25 @@ test_tool_rejects_a_flag_with_no_value() {
     assert_contains "$out" "--platforms needs a value" "dangling flag message"
 }
 
+test_list_contains_is_not_confused_by_a_glob_in_the_list() {
+    # Splitting the list requires leaving it unquoted, which also enables
+    # pathname expansion. Without `set -f` the list "fedora * macos" becomes
+    # the filenames in the caller's directory, so the answer depends on where
+    # the script was run from.
+    local box status
+    box=$(sandbox)
+    : > "$box/decoy-one"
+    : > "$box/decoy-two"
+
+    ( cd "$box" || exit 1; list_contains '*' "fedora * macos" )
+    status=$?
+    assert_ok $status "a literal * in the list is found"
+
+    ( cd "$box" || exit 1; list_contains decoy-one "fedora * macos" )
+    status=$?
+    assert_fails $status "a filename must not match through glob expansion"
+}
+
 run_test test_list_contains_finds_a_word
 run_test test_list_contains_rejects_a_missing_word
 run_test test_list_contains_rejects_a_partial_match
@@ -726,7 +745,29 @@ run_test test_tool_records_home_entries_and_post
 run_test test_tool_records_several_tools_in_order
 run_test test_tool_rejects_an_unknown_flag
 run_test test_tool_requires_platforms
+test_tool_rejects_a_flag_shaped_value() {
+    manifest_reset
+    local out
+    out=$(tool bad --platforms --config sway 2>&1)
+    assert_fails $? "flag-shaped value status"
+    assert_contains "$out" "is missing its value" "flag-shaped value message"
+    assert_eq "${#tool_names[@]}" "0" "nothing recorded"
+}
+
+test_tool_rejects_a_duplicate_name() {
+    manifest_reset
+    tool dup --platforms fedora
+    local out
+    out=$(tool dup --platforms macos 2>&1)
+    assert_fails $? "duplicate name status"
+    assert_contains "$out" "declared twice" "duplicate name message"
+    assert_eq "${#tool_names[@]}" "1" "duplicate not recorded"
+}
+
 run_test test_tool_rejects_a_flag_with_no_value
+run_test test_list_contains_is_not_confused_by_a_glob_in_the_list
+run_test test_tool_rejects_a_flag_shaped_value
+run_test test_tool_rejects_a_duplicate_name
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -748,6 +789,10 @@ In `install.sh`, insert after `detect_platform()`:
 # on Apple's /bin/bash.
 # ---------------------------------------------------------------------------
 
+# Read these by index, never as "${tool_names[@]}". In bash 3.2 — which is
+# what this has to run on — expanding an empty array that way under `set -u`
+# is an unbound-variable error that kills the script. `${#tool_names[@]}` is
+# safe, so an index loop bounded by it is the idiom to use.
 tool_names=()
 tool_platforms=()
 tool_config=()
@@ -768,16 +813,27 @@ manifest_reset() {
     tool_post=()
 }
 
-list_contains() {
+list_contains() (
     # True when the whole word $1 appears in the space-separated list $2.
-    local needle=$1 word
+    #
+    # The body is a subshell — ( ) rather than { } — so `set -f` is local to
+    # it. Splitting $2 requires leaving it unquoted, and an unquoted expansion
+    # does pathname expansion as well as word splitting: a list containing *
+    # or ? would otherwise expand against whatever directory the caller
+    # happens to be in, so the same inputs would give different answers
+    # depending on where the script was run from.
+    #
+    # The comparison side is already safe: [ ] with both operands quoted is a
+    # literal string comparison, never a pattern match.
+    set -f
+    needle=$1
     for word in $2; do
         if [ "$word" = "$needle" ]; then
-            return 0
+            exit 0
         fi
     done
-    return 1
-}
+    exit 1
+)
 
 tool() {
     # tool <name> --platforms "<ids>" [--config <dir>] [--home "<entries>"]
@@ -786,6 +842,14 @@ tool() {
     #
     # Unknown flags are an error rather than being ignored, so a typo in the
     # manifest surfaces immediately instead of silently dropping a dependency.
+    # For the same reason a value that is itself flag-shaped is rejected: in
+    # `tool x --platforms --config sway` the author forgot the platforms
+    # value, and taking "--config" as that value would give the tool a
+    # platform matching nothing, so it would install nowhere and say nothing.
+    #
+    # A repeated flag takes the last value, as command lines usually do. A
+    # repeated tool name is an error: later tasks iterate these arrays to
+    # install and link, so a copy-pasted duplicate would do both twice.
     local name=${1:-}
     shift || true
 
@@ -803,6 +867,13 @@ tool() {
                     printf 'manifest: %s needs a value (tool %s)\n' "$1" "$name" >&2
                     return 1
                 fi
+                case $2 in
+                    --*)
+                        printf 'manifest: %s is missing its value (tool %s), got %s\n' \
+                            "$1" "$name" "$2" >&2
+                        return 1
+                        ;;
+                esac
                 case $1 in
                     --platforms) platforms=$2 ;;
                     --config)    config=$2 ;;
@@ -826,6 +897,15 @@ tool() {
         return 1
     fi
 
+    local i=0
+    while [ "$i" -lt "${#tool_names[@]}" ]; do
+        if [ "${tool_names[$i]}" = "$name" ]; then
+            printf 'manifest: %s is declared twice\n' "$name" >&2
+            return 1
+        fi
+        i=$((i + 1))
+    done
+
     tool_names+=("$name")
     tool_platforms+=("$platforms")
     tool_config+=("$config")
@@ -840,7 +920,7 @@ tool() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `28 test(s), 0 failure(s), 1 skipped`.
+Expected: `31 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1019,7 +1099,7 @@ link() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `35 test(s), 0 failure(s), 1 skipped`.
+Expected: `38 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1333,7 +1413,7 @@ Note: `${1// /}` is bash pattern substitution, available in bash 3.2. It collaps
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `44 test(s), 0 failure(s), 1 skipped`.
+Expected: `47 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1718,7 +1798,7 @@ main() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `53 test(s), 0 failure(s), 1 skipped`.
+Expected: `56 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Verify syntax**
 
@@ -1828,7 +1908,7 @@ Expected: PASS. If any fail, fix `install.sh` — the behaviour is meant to exis
 - [ ] **Step 3: Run the whole suite**
 
 Run: `tests/install_test.sh`
-Expected: `58 test(s), 0 failure(s), 1 skipped`.
+Expected: `61 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 4: Commit**
 
@@ -1936,7 +2016,7 @@ Expected: `Platform: macos`, no `unassigned:` lines (every one of the eight `con
 - [ ] **Step 4: Run the suite**
 
 Run: `tests/install_test.sh`
-Expected: `58 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
+Expected: `61 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
 
 - [ ] **Step 5: Commit**
 
@@ -2297,7 +2377,7 @@ silently on a machine the author is probably not sitting at."
 - [ ] **Step 1: Run the full suite**
 
 Run: `tests/install_test.sh`
-Expected: `58 test(s), 0 failure(s), 1 skipped`, exit 0.
+Expected: `61 test(s), 0 failure(s), 1 skipped`, exit 0.
 
 - [ ] **Step 2: Syntax-check everything**
 
