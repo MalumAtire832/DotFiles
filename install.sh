@@ -64,15 +64,55 @@ resolve() {
     fi
 }
 
+os_release_id() {
+    # Print the ID field of an os-release file — $1, or /etc/os-release — or
+    # "unknown" when the file is unreadable or names no ID.
+    #
+    # Taking the path as an argument is what makes this testable from macOS,
+    # where detect_platform never reaches this code.
+    #
+    # The file is sourced, as freedesktop.org's own os-release specification
+    # recommends, which does mean its values are executed as shell. It is
+    # root-owned on a normal system; on one where it is not, the reader has
+    # larger problems than this script.
+    local file=${1:-/etc/os-release}
+
+    if [ ! -r "$file" ]; then
+        printf 'unknown\n'
+        return 0
+    fi
+
+    # In a subshell: os-release defines ID, NAME and VERSION, and sourcing it
+    # here would clobber the caller's variables of those names.
+    (
+        # shellcheck disable=SC1091
+        . "$file"
+        printf '%s\n' "${ID:-unknown}"
+    )
+}
+
 detect_platform() {
     # Print this machine's platform identifier: "macos", or the ID field from
-    # /etc/os-release on Linux ("fedora"). "unknown" when neither applies.
+    # /etc/os-release on Linux ("fedora").
+    #
+    # "unknown" covers two different situations — a kernel that is neither
+    # Darwin nor Linux, and a Linux whose distribution could not be
+    # identified. Callers treat both the same way: refuse to continue.
     #
     # Identifiers are distro-level rather than family-level because package
     # names are distro-specific: rofi-wayland means nothing to apt. Set
-    # DOTFILES_PLATFORM to override, which is how the tests reach both paths.
-    if [ -n "${DOTFILES_PLATFORM:-}" ]; then
-        printf '%s\n' "$DOTFILES_PLATFORM"
+    # DOTFILES_PLATFORM to override, which is how the tests reach both paths
+    # and how a user dry-runs the other platform's plan.
+    local override=${DOTFILES_PLATFORM:-}
+
+    # Trim surrounding whitespace. A value pasted from shell history can carry
+    # a trailing space, and " fedora" would match nothing downstream while
+    # looking correct in the error message.
+    override=${override#"${override%%[![:space:]]*}"}
+    override=${override%"${override##*[![:space:]]}"}
+
+    if [ -n "$override" ]; then
+        printf '%s\n' "$override"
         return 0
     fi
 
@@ -81,17 +121,7 @@ detect_platform() {
             printf 'macos\n'
             ;;
         Linux)
-            if [ -r /etc/os-release ]; then
-                # In a subshell: os-release defines ID, NAME and VERSION, and
-                # sourcing it here would clobber the caller's variables.
-                (
-                    # shellcheck disable=SC1091
-                    . /etc/os-release
-                    printf '%s\n' "${ID:-unknown}"
-                )
-            else
-                printf 'unknown\n'
-            fi
+            os_release_id /etc/os-release
             ;;
         *)
             printf 'unknown\n'

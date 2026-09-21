@@ -92,7 +92,10 @@ run_test() {
     skipped_this_test=0
     local before=$tests_failed
     "$1"
-    if [ "$skipped_this_test" = 1 ]; then
+    # A test that called skip and then failed an assertion anyway is a
+    # test-authoring bug (a missing return after skip). Report it as a
+    # failure: a failure that appeared in no counted test reads as noise.
+    if [ "$skipped_this_test" = 1 ] && [ "$tests_failed" = "$before" ]; then
         return 0
     fi
     tests_run=$((tests_run + 1))
@@ -184,11 +187,88 @@ run_test test_resolve_fails_on_a_missing_parent
 run_test test_resolve_detects_a_symlink_loop
 
 # --------------------------------------------------------------------------
+# os_release_id()
+#
+# These take a fixture path, so they exercise the Linux parsing on any
+# platform. A test that can only run on Fedora is a test this machine cannot
+# run at all.
+# --------------------------------------------------------------------------
+
+test_os_release_id_reads_an_unquoted_id() {
+    # Fedora writes ID=fedora with no quotes.
+    local box
+    box=$(sandbox)
+    printf 'NAME=Fedora Linux\nID=fedora\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "fedora" "unquoted ID"
+}
+
+test_os_release_id_reads_a_quoted_id() {
+    # Debian and others write ID="debian". Both forms occur in the wild.
+    local box
+    box=$(sandbox)
+    printf 'NAME="Debian GNU/Linux"\nID="debian"\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "debian" "quoted ID"
+}
+
+test_os_release_id_reports_unknown_without_an_id() {
+    local box
+    box=$(sandbox)
+    printf 'NAME=Something\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "unknown" "no ID line"
+}
+
+test_os_release_id_reports_unknown_for_an_empty_id() {
+    local box
+    box=$(sandbox)
+    printf 'ID=""\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "unknown" "empty ID"
+}
+
+test_os_release_id_reports_unknown_for_a_missing_file() {
+    local box
+    box=$(sandbox)
+    assert_eq "$(os_release_id "$box/absent")" "unknown" "missing file"
+}
+
+test_os_release_id_does_not_leak_variables() {
+    # os-release defines ID, NAME and VERSION. Sourcing it in the caller's
+    # shell would clobber them, so it is sourced in a subshell.
+    #
+    # This test takes a fixture rather than relying on /etc/os-release, so it
+    # genuinely exercises the sourcing path on macOS too. Asserting against
+    # the real file would pass trivially on Darwin, where this code never runs.
+    local box ID NAME VERSION
+    box=$(sandbox)
+    printf 'NAME=Fedora Linux\nID=fedora\nVERSION=41\n' > "$box/os-release"
+    ID="sentinel"
+    NAME="sentinel"
+    VERSION="sentinel"
+    os_release_id "$box/os-release" >/dev/null
+    assert_eq "$ID" "sentinel" "ID not leaked"
+    assert_eq "$NAME" "sentinel" "NAME not leaked"
+    assert_eq "$VERSION" "sentinel" "VERSION not leaked"
+}
+
+# --------------------------------------------------------------------------
 # detect_platform()
 # --------------------------------------------------------------------------
 
 test_detect_platform_honours_the_override() {
     assert_eq "$(DOTFILES_PLATFORM=fedora detect_platform)" "fedora" "override"
+}
+
+test_detect_platform_trims_the_override() {
+    # A value pasted from shell history can carry a trailing space. Tasks
+    # downstream match it against a fixed list, where " fedora" matches
+    # nothing and the failure would be reported far from its cause.
+    assert_eq "$(DOTFILES_PLATFORM='  fedora  ' detect_platform)" "fedora" "trimmed"
+}
+
+test_detect_platform_ignores_a_whitespace_only_override() {
+    # Whitespace-only is a typo, not a platform. It must fall through to real
+    # detection rather than being used as the platform name.
+    assert_eq "$(DOTFILES_PLATFORM='   ' detect_platform)" \
+        "$(detect_platform)" "whitespace override ignored"
 }
 
 test_detect_platform_reports_macos_on_darwin() {
@@ -205,22 +285,21 @@ test_detect_platform_reads_os_release_id_on_linux() {
         return 0
     fi
     local expected
-    expected=$(. /etc/os-release && printf '%s' "$ID")
+    expected=$(os_release_id /etc/os-release)
     assert_eq "$(detect_platform)" "$expected" "linux"
 }
 
-test_detect_platform_does_not_leak_os_release_variables() {
-    # /etc/os-release defines ID, NAME, VERSION and friends. Sourcing it in the
-    # caller's shell would clobber them, so it must happen in a subshell.
-    local ID="sentinel"
-    detect_platform >/dev/null
-    assert_eq "$ID" "sentinel" "no leak"
-}
-
+run_test test_os_release_id_reads_an_unquoted_id
+run_test test_os_release_id_reads_a_quoted_id
+run_test test_os_release_id_reports_unknown_without_an_id
+run_test test_os_release_id_reports_unknown_for_an_empty_id
+run_test test_os_release_id_reports_unknown_for_a_missing_file
+run_test test_os_release_id_does_not_leak_variables
 run_test test_detect_platform_honours_the_override
+run_test test_detect_platform_trims_the_override
+run_test test_detect_platform_ignores_a_whitespace_only_override
 run_test test_detect_platform_reports_macos_on_darwin
 run_test test_detect_platform_reads_os_release_id_on_linux
-run_test test_detect_platform_does_not_leak_os_release_variables
 
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
