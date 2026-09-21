@@ -441,8 +441,192 @@ install_casks() {
     brew install --cask "${pkgs[@]}"
 }
 
+# ---------------------------------------------------------------------------
+# Orchestration
+# ---------------------------------------------------------------------------
+
+platform=''
+dry_run=0
+failed_tools=''
+
+require_package_manager() {
+    case "$platform" in
+        fedora)
+            if ! command -v dnf >/dev/null 2>&1; then
+                printf 'dnf not found. This does not look like a Fedora system.\n' >&2
+                return 1
+            fi
+            ;;
+        macos)
+            if ! command -v brew >/dev/null 2>&1; then
+                printf 'Homebrew not found. Install it first:\n' >&2
+                printf '  https://brew.sh\n' >&2
+                return 1
+            fi
+            ;;
+        *)
+            printf 'Unsupported platform: %s\n' "$platform" >&2
+            printf 'Supported platforms: fedora, macos\n' >&2
+            return 1
+            ;;
+    esac
+}
+
+tool_index_for_config() {
+    # Print the manifest index declaring config directory $1, or nothing.
+    local i=0
+    while [ "$i" -lt "${#tool_names[@]}" ]; do
+        if [ "${tool_config[$i]}" = "$1" ]; then
+            printf '%s\n' "$i"
+            return 0
+        fi
+        i=$((i + 1))
+    done
+    return 1
+}
+
+home_entry_is_declared() {
+    local i=0
+    while [ "$i" -lt "${#tool_names[@]}" ]; do
+        if list_contains "$1" "${tool_home[$i]}"; then
+            return 0
+        fi
+        i=$((i + 1))
+    done
+    return 1
+}
+
+report_unassigned() {
+    # Anything in config/ or home/ that no manifest entry mentions. Adding
+    # config/zellij/ later and forgetting to declare it should be loud.
+    local dir entry name
+    for dir in "$files_dir"/config/*/; do
+        [ -d "$dir" ] || continue
+        name=$(basename -- "${dir%/}")
+        if ! tool_index_for_config "$name" >/dev/null; then
+            printf '  unassigned: %s (declared by no tool, not linked)\n' "$name"
+        fi
+    done
+    for entry in "$files_dir"/home/.*; do
+        name=$(basename -- "$entry")
+        case "$name" in . | ..) continue ;; esac
+        [ -e "$entry" ] || continue
+        if ! home_entry_is_declared "$name"; then
+            printf '  unassigned: %s (declared by no tool, not linked)\n' "$name"
+        fi
+    done
+}
+
+process_tool() {
+    # Install and link one manifest entry. Returns non-zero if it failed.
+    local i=$1
+    local name=${tool_names[$i]}
+    local pkgs='' casks='' missing='' missing_cask='' entry
+
+    case "$platform" in
+        fedora) pkgs=${tool_dnf[$i]} ;;
+        macos)  pkgs=${tool_brew[$i]}; casks=${tool_cask[$i]} ;;
+    esac
+
+    printf '%s\n' "$name"
+
+    missing=$(missing_packages "$pkgs")
+    if [ -n "${missing// /}" ]; then
+        if ! install_packages "$missing"; then
+            printf '  FAILED to install: %s\n' "$missing" >&2
+            printf '  skipping links for %s\n' "$name" >&2
+            return 1
+        fi
+    fi
+
+    if [ -n "${casks// /}" ]; then
+        missing_cask=$(missing_casks "$casks")
+        if [ -n "${missing_cask// /}" ]; then
+            if ! install_casks "$missing_cask"; then
+                printf '  FAILED to install cask: %s\n' "$missing_cask" >&2
+                printf '  skipping links for %s\n' "$name" >&2
+                return 1
+            fi
+        fi
+    fi
+
+    if [ -n "${tool_post[$i]}" ]; then
+        if [ "$dry_run" = 1 ]; then
+            printf '  would run %s\n' "${tool_post[$i]}"
+        elif ! eval "${tool_post[$i]}"; then
+            printf '  FAILED post-install command: %s\n' "${tool_post[$i]}" >&2
+            return 1
+        fi
+    fi
+
+    if [ -n "${tool_config[$i]}" ]; then
+        link "$files_dir/config/${tool_config[$i]}" \
+             "$HOME/.config/${tool_config[$i]}"
+    fi
+
+    for entry in ${tool_home[$i]}; do
+        link "$files_dir/home/$entry" "$HOME/$entry"
+    done
+}
+
+usage() {
+    cat <<'USAGE'
+Usage: install.sh [--dry-run] [--help]
+
+Detects the platform, installs the packages that platform's tools need, and
+links this repository's configuration into ~/.config and $HOME.
+
+  --dry-run   Print what would be installed and linked; change nothing.
+  --help      Show this message.
+
+What each platform receives is declared in manifest.sh.
+USAGE
+}
+
 main() {
-    printf 'not implemented yet\n'
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --dry-run) dry_run=1; shift ;;
+            --help|-h) usage; return 0 ;;
+            *) printf 'Unknown option: %s\n\n' "$1" >&2; usage >&2; return 2 ;;
+        esac
+    done
+
+    platform=$(detect_platform)
+    require_package_manager || return 1
+
+    printf 'Platform: %s\n' "$platform"
+    if [ "$dry_run" = 1 ]; then
+        printf 'Dry run: nothing will be installed or linked.\n'
+    fi
+
+    manifest_reset
+    # shellcheck disable=SC1091
+    . "$files_dir/manifest.sh"
+
+    printf '\n'
+    report_unassigned
+
+    local i=0
+    printf '\n'
+    while [ "$i" -lt "${#tool_names[@]}" ]; do
+        if list_contains "$platform" "${tool_platforms[$i]}"; then
+            if ! process_tool "$i"; then
+                failed_tools="$failed_tools ${tool_names[$i]}"
+            fi
+        fi
+        i=$((i + 1))
+    done
+
+    printf '\n'
+    if [ -n "${failed_tools// /}" ]; then
+        printf 'Failed:%s\n' "$failed_tools"
+        printf 'Their configuration was not linked. Fix the errors above and\n'
+        printf 're-run; only what is still missing will be retried.\n'
+        return 1
+    fi
+
+    printf 'Done.\n'
 }
 
 if [ "${DOTFILES_LIB_ONLY:-0}" != 1 ]; then

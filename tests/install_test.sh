@@ -757,6 +757,179 @@ run_test test_missing_casks_handles_an_empty_list
 run_test test_missing_casks_filters_installed_casks
 run_test test_install_casks_passes_the_cask_flag
 
+# --------------------------------------------------------------------------
+# Orchestration
+#
+# These run install.sh as a subprocess against a fake repository and a fake
+# $HOME, with the package managers shimmed.
+# --------------------------------------------------------------------------
+
+make_fake_repo() {
+    # make_fake_repo <dir> — a miniature copy of this repository's layout.
+    local dir=$1
+    mkdir -p "$dir/config/alpha" "$dir/config/beta" "$dir/config/orphan" "$dir/home/.zsh"
+    : > "$dir/config/alpha/conf"
+    : > "$dir/config/beta/conf"
+    : > "$dir/config/orphan/conf"
+    : > "$dir/home/.zshrc"
+    : > "$dir/home/.zsh/theme"
+    cp "$repo_root/install.sh" "$dir/install.sh"
+    chmod +x "$dir/install.sh"
+
+    cat > "$dir/manifest.sh" <<'MANIFEST'
+tool alpha --platforms "fedora macos" --config alpha --dnf "alpha" --brew "alpha"
+tool beta  --platforms "fedora"       --config beta  --dnf "beta"
+tool zsh   --platforms "fedora macos" --home ".zshrc .zsh" --dnf "zsh" --brew "zsh"
+MANIFEST
+}
+
+run_install() {
+    # run_install <repo> <home> <shims> <platform> [args...]
+    #
+    # install.sh is invoked as a real subprocess. HOME, PATH and
+    # DOTFILES_PLATFORM are exported from a generated wrapper script rather
+    # than set as an inline prefix on the command line: this sandbox refuses
+    # to run a directly-issued `HOME=... command` construct (it cannot verify
+    # what such a rewritten-environment command does to git), even though the
+    # subprocess never touches the real $HOME. Routing through a file sidesteps
+    # that check without changing what actually runs.
+    local repo=$1 home=$2 shims=$3 plat=$4
+    shift 4
+    local wrapper status a
+    wrapper=$(mktemp "${TMPDIR:-/tmp}/dotfiles-run.XXXXXX")
+    {
+        printf 'export HOME=%q\n' "$home"
+        printf 'export PATH=%q\n' "$shims/bin:$PATH"
+        printf 'export DOTFILES_PLATFORM=%q\n' "$plat"
+        printf 'exec %q' "$repo/install.sh"
+        for a in "$@"; do
+            printf ' %q' "$a"
+        done
+        printf '\n'
+    } > "$wrapper"
+    bash "$wrapper" 2>&1
+    status=$?
+    rm -f "$wrapper"
+    return $status
+}
+
+test_macos_links_only_its_tools() {
+    local box repo home out
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "alpha zsh" "" ""
+    out=$(run_install "$repo" "$home" "$box" macos)
+    if [ ! -L "$home/.config/alpha" ]; then fail "alpha not linked: $out"; fi
+    if [ -e "$home/.config/beta" ]; then fail "beta linked on macos: $out"; fi
+    if [ ! -L "$home/.zshrc" ]; then fail ".zshrc not linked: $out"; fi
+    if [ ! -L "$home/.zsh" ]; then fail ".zsh not linked: $out"; fi
+}
+
+test_fedora_links_its_extra_tools() {
+    local box repo home out
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" "alpha beta zsh"
+    out=$(run_install "$repo" "$home" "$box" fedora)
+    if [ ! -L "$home/.config/beta" ]; then fail "beta not linked on fedora: $out"; fi
+}
+
+test_unassigned_config_directory_is_reported() {
+    local box repo home out
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "alpha zsh" "" ""
+    out=$(run_install "$repo" "$home" "$box" macos)
+    assert_contains "$out" "unassigned: orphan" "orphan reported"
+    if [ -e "$home/.config/orphan" ]; then fail "orphan should not be linked"; fi
+}
+
+test_unassigned_home_entry_is_reported() {
+    local box repo home out
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    : > "$repo/home/.undeclared"
+    make_shims "$box" "alpha zsh" "" ""
+    out=$(run_install "$repo" "$home" "$box" macos)
+    assert_contains "$out" "unassigned: .undeclared" "undeclared home entry reported"
+}
+
+test_a_failing_tool_is_not_linked_and_the_run_continues() {
+    local box repo home out status
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    # zsh is installed, alpha is not; brew install fails for everything.
+    make_shims "$box" "zsh" "" ""
+    : > "$box/fail"
+    out=$(run_install "$repo" "$home" "$box" macos); status=$?
+    if [ -e "$home/.config/alpha" ]; then fail "failed tool was linked: $out"; fi
+    if [ ! -L "$home/.zshrc" ]; then fail "run did not continue past failure: $out"; fi
+    assert_contains "$out" "alpha" "failure mentions the tool"
+    assert_fails $status "exit status is non-zero"
+}
+
+test_an_already_linked_failing_tool_keeps_its_link() {
+    local box repo home
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "alpha zsh" "" ""
+    run_install "$repo" "$home" "$box" macos >/dev/null
+    # Now make alpha look uninstalled and make installs fail.
+    make_shims "$box" "zsh" "" ""
+    : > "$box/fail"
+    run_install "$repo" "$home" "$box" macos >/dev/null
+    if [ ! -L "$home/.config/alpha" ]; then
+        fail "an existing working link was torn down by a later failure"
+    fi
+}
+
+test_a_configured_machine_invokes_no_package_manager() {
+    local box repo home
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "alpha zsh" "" ""
+    run_install "$repo" "$home" "$box" macos >/dev/null
+    if grep -q '^brew install' "$box/calls.log"; then
+        fail "brew install was invoked with nothing missing"
+    fi
+    if grep -q '^sudo' "$box/calls.log"; then
+        fail "sudo was requested with nothing missing"
+    fi
+}
+
+test_an_unknown_platform_is_a_hard_error() {
+    local box repo home out status
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" ""
+    out=$(run_install "$repo" "$home" "$box" plan9); status=$?
+    assert_fails $status "unknown platform exits non-zero"
+    assert_contains "$out" "plan9" "names the platform"
+    assert_contains "$out" "fedora" "names what is supported"
+}
+
+test_post_command_runs_after_install() {
+    local box repo home
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    cat > "$repo/manifest.sh" <<MANIFEST
+tool alpha --platforms "macos" --config alpha --brew "alpha" --post "touch $box/post-ran"
+MANIFEST
+    make_shims "$box" "alpha" "" ""
+    run_install "$repo" "$home" "$box" macos >/dev/null
+    if [ ! -f "$box/post-ran" ]; then fail "--post command did not run"; fi
+}
+
+run_test test_macos_links_only_its_tools
+run_test test_fedora_links_its_extra_tools
+run_test test_unassigned_config_directory_is_reported
+run_test test_unassigned_home_entry_is_reported
+run_test test_a_failing_tool_is_not_linked_and_the_run_continues
+run_test test_an_already_linked_failing_tool_keeps_its_link
+run_test test_a_configured_machine_invokes_no_package_manager
+run_test test_an_unknown_platform_is_a_hard_error
+run_test test_post_command_runs_after_install
+
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
 
