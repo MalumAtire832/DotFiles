@@ -28,13 +28,39 @@ stamp=$(date +%Y%m%d-%H%M%S)
 
 resolve() {
     # Print the absolute, symlink-free path of $1. Stands in for `readlink -f`.
-    # A nonexistent leaf is fine as long as its parent directory exists.
-    if [ -d "$1" ]; then
-        (cd -- "$1" && pwd -P)
+    #
+    # The symlink chain is walked explicitly. Testing `-d` alone is not enough:
+    # `-d` follows a symlink to a directory, but a symlink to a *file* would
+    # fall through to the leaf branch, which resolves only the containing
+    # directory and reattaches the link's own name — returning the link's path
+    # rather than its target. home/.zshrc and home/.zprofile are exactly that
+    # case, so link() would judge them wrong on every run and relink them.
+    #
+    # Plain `readlink` with no flags is POSIX and present on both userlands;
+    # only `readlink -f` is the GNU-ism being avoided.
+    local path=$1 target parent hops=0
+
+    while [ -L "$path" ]; do
+        hops=$((hops + 1))
+        if [ "$hops" -gt 40 ]; then
+            printf 'resolve: too many levels of symbolic links: %s\n' "$1" >&2
+            return 1
+        fi
+        target=$(readlink -- "$path") || return 1
+        case "$target" in
+            /*) path=$target ;;
+            *)  path="$(dirname -- "$path")/$target" ;;
+        esac
+    done
+
+    if [ -d "$path" ]; then
+        (cd -- "$path" && pwd -P) || return 1
     else
-        printf '%s/%s\n' \
-            "$(cd -- "$(dirname -- "$1")" && pwd -P)" \
-            "$(basename -- "$1")"
+        # Assigning the substitution separately so a failing cd is caught. As
+        # an argument to printf its status is discarded and set -e never fires,
+        # which would return a fabricated path with status 0.
+        parent=$(cd -- "$(dirname -- "$path")" && pwd -P) || return 1
+        printf '%s/%s\n' "$parent" "$(basename -- "$path")"
     fi
 }
 
