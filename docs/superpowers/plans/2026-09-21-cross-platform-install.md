@@ -149,7 +149,10 @@ run_test() {
     skipped_this_test=0
     local before=$tests_failed
     "$1"
-    if [ "$skipped_this_test" = 1 ]; then
+    # A test that called skip and then failed an assertion anyway is a
+    # test-authoring bug (a missing return after skip). Report it as a
+    # failure: a failure that appeared in no counted test reads as noise.
+    if [ "$skipped_this_test" = 1 ] && [ "$tests_failed" = "$before" ]; then
         return 0
     fi
     tests_run=$((tests_run + 1))
@@ -372,7 +375,13 @@ DOTFILES_LIB_ONLY=1, so the new test runner can exercise them directly."
 
 ---
 
-### Task 2: `detect_platform()`
+### Task 2: `os_release_id()` and `detect_platform()`
+
+Platform detection is split in two: one function reads an os-release file, one
+decides the platform. The split exists for testability — `detect_platform`
+takes the Darwin branch on macOS and never reaches the Linux code, so the
+os-release parsing would otherwise be untestable on the machine this is being
+written on, which is exactly the half that has to work on Fedora.
 
 **Files:**
 - Modify: `install.sh`
@@ -384,11 +393,88 @@ In `tests/install_test.sh`, insert before the final `printf '\n%d test(s)` line:
 
 ```bash
 # --------------------------------------------------------------------------
+# os_release_id()
+#
+# These take a fixture path, so they exercise the Linux parsing on any
+# platform. A test that can only run on Fedora is a test this machine cannot
+# run at all.
+# --------------------------------------------------------------------------
+
+test_os_release_id_reads_an_unquoted_id() {
+    # Fedora writes ID=fedora with no quotes.
+    local box
+    box=$(sandbox)
+    printf 'NAME=Fedora Linux\nID=fedora\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "fedora" "unquoted ID"
+}
+
+test_os_release_id_reads_a_quoted_id() {
+    # Debian and others write ID="debian". Both forms occur in the wild.
+    local box
+    box=$(sandbox)
+    printf 'NAME="Debian GNU/Linux"\nID="debian"\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "debian" "quoted ID"
+}
+
+test_os_release_id_reports_unknown_without_an_id() {
+    local box
+    box=$(sandbox)
+    printf 'NAME=Something\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "unknown" "no ID line"
+}
+
+test_os_release_id_reports_unknown_for_an_empty_id() {
+    local box
+    box=$(sandbox)
+    printf 'ID=""\n' > "$box/os-release"
+    assert_eq "$(os_release_id "$box/os-release")" "unknown" "empty ID"
+}
+
+test_os_release_id_reports_unknown_for_a_missing_file() {
+    local box
+    box=$(sandbox)
+    assert_eq "$(os_release_id "$box/absent")" "unknown" "missing file"
+}
+
+test_os_release_id_does_not_leak_variables() {
+    # os-release defines ID, NAME and VERSION. Sourcing it in the caller's
+    # shell would clobber them, so it is sourced in a subshell.
+    #
+    # This test takes a fixture rather than relying on /etc/os-release, so it
+    # genuinely exercises the sourcing path on macOS too. Asserting against
+    # the real file would pass trivially on Darwin, where this code never runs.
+    local box ID NAME VERSION
+    box=$(sandbox)
+    printf 'NAME=Fedora Linux\nID=fedora\nVERSION=41\n' > "$box/os-release"
+    ID="sentinel"
+    NAME="sentinel"
+    VERSION="sentinel"
+    os_release_id "$box/os-release" >/dev/null
+    assert_eq "$ID" "sentinel" "ID not leaked"
+    assert_eq "$NAME" "sentinel" "NAME not leaked"
+    assert_eq "$VERSION" "sentinel" "VERSION not leaked"
+}
+
+# --------------------------------------------------------------------------
 # detect_platform()
 # --------------------------------------------------------------------------
 
 test_detect_platform_honours_the_override() {
     assert_eq "$(DOTFILES_PLATFORM=fedora detect_platform)" "fedora" "override"
+}
+
+test_detect_platform_trims_the_override() {
+    # A value pasted from shell history can carry a trailing space. Tasks
+    # downstream match it against a fixed list, where " fedora" matches
+    # nothing and the failure would be reported far from its cause.
+    assert_eq "$(DOTFILES_PLATFORM='  fedora  ' detect_platform)" "fedora" "trimmed"
+}
+
+test_detect_platform_ignores_a_whitespace_only_override() {
+    # Whitespace-only is a typo, not a platform. It must fall through to real
+    # detection rather than being used as the platform name.
+    assert_eq "$(DOTFILES_PLATFORM='   ' detect_platform)" \
+        "$(detect_platform)" "whitespace override ignored"
 }
 
 test_detect_platform_reports_macos_on_darwin() {
@@ -405,43 +491,85 @@ test_detect_platform_reads_os_release_id_on_linux() {
         return 0
     fi
     local expected
-    expected=$(. /etc/os-release && printf '%s' "$ID")
+    expected=$(os_release_id /etc/os-release)
     assert_eq "$(detect_platform)" "$expected" "linux"
 }
 
-test_detect_platform_does_not_leak_os_release_variables() {
-    # /etc/os-release defines ID, NAME, VERSION and friends. Sourcing it in the
-    # caller's shell would clobber them, so it must happen in a subshell.
-    local ID="sentinel"
-    detect_platform >/dev/null
-    assert_eq "$ID" "sentinel" "no leak"
-}
-
+run_test test_os_release_id_reads_an_unquoted_id
+run_test test_os_release_id_reads_a_quoted_id
+run_test test_os_release_id_reports_unknown_without_an_id
+run_test test_os_release_id_reports_unknown_for_an_empty_id
+run_test test_os_release_id_reports_unknown_for_a_missing_file
+run_test test_os_release_id_does_not_leak_variables
 run_test test_detect_platform_honours_the_override
+run_test test_detect_platform_trims_the_override
+run_test test_detect_platform_ignores_a_whitespace_only_override
 run_test test_detect_platform_reports_macos_on_darwin
 run_test test_detect_platform_reads_os_release_id_on_linux
-run_test test_detect_platform_does_not_leak_os_release_variables
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
-Run: `tests/install_test.sh detect_platform`
+Run: `tests/install_test.sh os_release_id`
+Expected: FAIL with `os_release_id: command not found`.
+
+Then run: `tests/install_test.sh detect_platform`
 Expected: FAIL with `detect_platform: command not found`.
 
-- [ ] **Step 3: Implement `detect_platform()`**
+- [ ] **Step 3: Implement both functions**
 
 In `install.sh`, insert after `resolve()`:
 
 ```bash
+os_release_id() {
+    # Print the ID field of an os-release file — $1, or /etc/os-release — or
+    # "unknown" when the file is unreadable or names no ID.
+    #
+    # Taking the path as an argument is what makes this testable from macOS,
+    # where detect_platform never reaches this code.
+    #
+    # The file is sourced, as freedesktop.org's own os-release specification
+    # recommends, which does mean its values are executed as shell. It is
+    # root-owned on a normal system; on one where it is not, the reader has
+    # larger problems than this script.
+    local file=${1:-/etc/os-release}
+
+    if [ ! -r "$file" ]; then
+        printf 'unknown\n'
+        return 0
+    fi
+
+    # In a subshell: os-release defines ID, NAME and VERSION, and sourcing it
+    # here would clobber the caller's variables of those names.
+    (
+        # shellcheck disable=SC1091
+        . "$file"
+        printf '%s\n' "${ID:-unknown}"
+    )
+}
+
 detect_platform() {
     # Print this machine's platform identifier: "macos", or the ID field from
-    # /etc/os-release on Linux ("fedora"). "unknown" when neither applies.
+    # /etc/os-release on Linux ("fedora").
+    #
+    # "unknown" covers two different situations — a kernel that is neither
+    # Darwin nor Linux, and a Linux whose distribution could not be
+    # identified. Callers treat both the same way: refuse to continue.
     #
     # Identifiers are distro-level rather than family-level because package
     # names are distro-specific: rofi-wayland means nothing to apt. Set
-    # DOTFILES_PLATFORM to override, which is how the tests reach both paths.
-    if [ -n "${DOTFILES_PLATFORM:-}" ]; then
-        printf '%s\n' "$DOTFILES_PLATFORM"
+    # DOTFILES_PLATFORM to override, which is how the tests reach both paths
+    # and how a user dry-runs the other platform's plan.
+    local override=${DOTFILES_PLATFORM:-}
+
+    # Trim surrounding whitespace. A value pasted from shell history can carry
+    # a trailing space, and " fedora" would match nothing downstream while
+    # looking correct in the error message.
+    override=${override#"${override%%[![:space:]]*}"}
+    override=${override%"${override##*[![:space:]]}"}
+
+    if [ -n "$override" ]; then
+        printf '%s\n' "$override"
         return 0
     fi
 
@@ -450,17 +578,7 @@ detect_platform() {
             printf 'macos\n'
             ;;
         Linux)
-            if [ -r /etc/os-release ]; then
-                # In a subshell: os-release defines ID, NAME and VERSION, and
-                # sourcing it here would clobber the caller's variables.
-                (
-                    # shellcheck disable=SC1091
-                    . /etc/os-release
-                    printf '%s\n' "${ID:-unknown}"
-                )
-            else
-                printf 'unknown\n'
-            fi
+            os_release_id /etc/os-release
             ;;
         *)
             printf 'unknown\n'
@@ -472,9 +590,18 @@ detect_platform() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `11 test(s), 0 failure(s), 1 skipped` on macOS. The Linux-only platform test is skipped, and a skipped test is never reported as `ok`.
+Expected: `16 test(s), 0 failure(s), 1 skipped` on macOS. The Linux-only platform test is skipped; the six `os_release_id` tests run everywhere because they take a fixture path.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify against stock bash 3.2**
+
+Run: `bash -n install.sh && bash -n tests/install_test.sh && echo SYNTAX-OK`
+Expected: `SYNTAX-OK`
+
+The trim uses `${var#"${var%%[![:space:]]*}"}`, which is POSIX parameter
+expansion and works in bash 3.2. Confirm the suite passes under `/bin/bash`
+specifically, not whatever `bash` resolves to on `PATH`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add install.sh tests/install_test.sh
@@ -484,8 +611,15 @@ Identifiers are distro-level rather than family-level, because package
 names are distro-specific and a linux identifier would have to be
 subdivided the first time a second distribution appeared.
 
-os-release is sourced in a subshell: it defines ID, NAME and VERSION,
-which are exactly the kind of names a caller might be using."
+Reading os-release is a separate function that takes the file path. On
+macOS detect_platform takes the Darwin branch and never reaches the
+Linux code, so without the split the os-release parsing could not be
+tested on the machine this was written on -- and that is the half that
+has to work on Fedora. It is sourced in a subshell: os-release defines
+ID, NAME and VERSION, which are exactly the names a caller might use.
+
+DOTFILES_PLATFORM is trimmed, and a whitespace-only value falls through
+to real detection rather than being taken as a platform name."
 ```
 
 ---
@@ -706,7 +840,7 @@ tool() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `21 test(s), 0 failure(s), 1 skipped`.
+Expected: `26 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -885,7 +1019,7 @@ link() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `28 test(s), 0 failure(s), 1 skipped`.
+Expected: `33 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1199,7 +1333,7 @@ Note: `${1// /}` is bash pattern substitution, available in bash 3.2. It collaps
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `37 test(s), 0 failure(s), 1 skipped`.
+Expected: `42 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1584,7 +1718,7 @@ main() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `46 test(s), 0 failure(s), 1 skipped`.
+Expected: `51 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Verify syntax**
 
@@ -1694,7 +1828,7 @@ Expected: PASS. If any fail, fix `install.sh` — the behaviour is meant to exis
 - [ ] **Step 3: Run the whole suite**
 
 Run: `tests/install_test.sh`
-Expected: `51 test(s), 0 failure(s), 1 skipped`.
+Expected: `56 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 4: Commit**
 
@@ -1802,7 +1936,7 @@ Expected: `Platform: macos`, no `unassigned:` lines (every one of the eight `con
 - [ ] **Step 4: Run the suite**
 
 Run: `tests/install_test.sh`
-Expected: `51 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
+Expected: `56 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
 
 - [ ] **Step 5: Commit**
 
@@ -2163,7 +2297,7 @@ silently on a machine the author is probably not sitting at."
 - [ ] **Step 1: Run the full suite**
 
 Run: `tests/install_test.sh`
-Expected: `51 test(s), 0 failure(s), 1 skipped`, exit 0.
+Expected: `56 test(s), 0 failure(s), 1 skipped`, exit 0.
 
 - [ ] **Step 2: Syntax-check everything**
 
