@@ -404,7 +404,7 @@ test_os_release_id_reads_an_unquoted_id() {
     # Fedora writes ID=fedora with no quotes.
     local box
     box=$(sandbox)
-    printf 'NAME=Fedora Linux\nID=fedora\n' > "$box/os-release"
+    printf 'NAME="Fedora Linux"\nID=fedora\n' > "$box/os-release"
     assert_eq "$(os_release_id "$box/os-release")" "fedora" "unquoted ID"
 }
 
@@ -445,7 +445,7 @@ test_os_release_id_does_not_leak_variables() {
     # the real file would pass trivially on Darwin, where this code never runs.
     local box ID NAME VERSION
     box=$(sandbox)
-    printf 'NAME=Fedora Linux\nID=fedora\nVERSION=41\n' > "$box/os-release"
+    printf 'NAME="Fedora Linux"\nID=fedora\nVERSION=41\n' > "$box/os-release"
     ID="sentinel"
     NAME="sentinel"
     VERSION="sentinel"
@@ -590,7 +590,7 @@ detect_platform() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `16 test(s), 0 failure(s), 1 skipped` on macOS. The Linux-only platform test is skipped; the six `os_release_id` tests run everywhere because they take a fixture path.
+Expected: `18 test(s), 0 failure(s), 1 skipped` on macOS. The Linux-only platform test is skipped; the six `os_release_id` tests run everywhere because they take a fixture path.
 
 - [ ] **Step 5: Verify against stock bash 3.2**
 
@@ -840,7 +840,7 @@ tool() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `26 test(s), 0 failure(s), 1 skipped`.
+Expected: `28 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1019,7 +1019,7 @@ link() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `33 test(s), 0 failure(s), 1 skipped`.
+Expected: `35 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1333,7 +1333,7 @@ Note: `${1// /}` is bash pattern substitution, available in bash 3.2. It collaps
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `42 test(s), 0 failure(s), 1 skipped`.
+Expected: `44 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1718,7 +1718,7 @@ main() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `51 test(s), 0 failure(s), 1 skipped`.
+Expected: `53 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Verify syntax**
 
@@ -1828,7 +1828,7 @@ Expected: PASS. If any fail, fix `install.sh` — the behaviour is meant to exis
 - [ ] **Step 3: Run the whole suite**
 
 Run: `tests/install_test.sh`
-Expected: `56 test(s), 0 failure(s), 1 skipped`.
+Expected: `58 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 4: Commit**
 
@@ -1936,7 +1936,7 @@ Expected: `Platform: macos`, no `unassigned:` lines (every one of the eight `con
 - [ ] **Step 4: Run the suite**
 
 Run: `tests/install_test.sh`
-Expected: `56 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
+Expected: `58 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
 
 - [ ] **Step 5: Commit**
 
@@ -2297,7 +2297,7 @@ silently on a machine the author is probably not sitting at."
 - [ ] **Step 1: Run the full suite**
 
 Run: `tests/install_test.sh`
-Expected: `56 test(s), 0 failure(s), 1 skipped`, exit 0.
+Expected: `58 test(s), 0 failure(s), 1 skipped`, exit 0.
 
 - [ ] **Step 2: Syntax-check everything**
 
