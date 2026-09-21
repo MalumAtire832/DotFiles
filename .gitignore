@@ -1,0 +1,28 @@
+# Targeted exclusions. Everything else in this repository is tracked, so a
+# new configuration directory needs no change here -- just drop it in
+# config/ and re-run install.sh.
+
+# Timestamped backups left behind while editing.
+*.bak
+*.bak-*
+*.backup-*
+
+# Tool state written into a config directory. The GTK bookmarks file is the
+# file chooser's sidebar, rewritten by GTK whenever it changes and full of
+# paths that only exist on this machine.
+/config/sway/.claude/
+/config/gtk-3.0/bookmarks
+
+# nnn keeps its session, mount and bookmark state in its configuration
+# directory, which is this one. Only the opener is configuration; the
+# bookmarks are symlinks to paths that exist on this machine alone, the same
+# reason the GTK ones above are excluded. Plugins are left tracked, since a
+# plugin dropped in there is something worth keeping.
+/config/nnn/sessions/
+/config/nnn/mounts/
+/config/nnn/bookmarks/
+/config/nnn/.selection
+
+# Leftover alternates.
+/config/cava/config1
+/config/waybar/old/

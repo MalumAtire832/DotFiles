@@ -1,0 +1,73 @@
+/*
+ * Oxocarbon for GTK 3 -- https://github.com/nyoom-engineering/oxocarbon
+ *
+ * Adwaita-dark resolves these names at runtime, so redefining them repaints
+ * it without replacing it. Carbon's model is a dark page with lighter layers
+ * floating above it: #161616 is the page, #262626 the first layer, #393939
+ * the line between them.
+ *
+ * Adwaita bakes a few shades into its stylesheet when it is built, and those
+ * ignore a @define-color. gtk.css restates the ones that matter, by name.
+ */
+
+@define-color base      #161616;
+@define-color surface   #262626;
+@define-color overlay   #393939;
+@define-color muted     #525252;
+@define-color text      #dde1e6;
+@define-color bright    #f2f4f8;
+
+@define-color blue      #33b1ff;
+@define-color yellow    #d2a106;
+@define-color green     #42be65;
+@define-color magenta   #ee5396;
+
+/* Windows, and the entries and lists drawn inside them. Carbon keeps both on
+   the page colour; separation comes from the border, not from a step in
+   lightness. */
+@define-color theme_bg_color            @base;
+@define-color theme_base_color          @base;
+@define-color theme_fg_color            @bright;
+@define-color theme_text_color          @bright;
+@define-color content_view_bg           @base;
+@define-color text_view_bg              @base;
+
+/* Chrome that sits above the page: headerbars, menus, tooltips, popovers. */
+@define-color theme_header_bg           @surface;
+@define-color theme_header_fg           @bright;
+@define-color tooltip_bg_color          @surface;
+@define-color tooltip_fg_color          @bright;
+
+@define-color borders                   @overlay;
+@define-color unfocused_borders         @overlay;
+
+/* The same blue sway paints a focused border with, so a focused GTK window
+   and a focused sway container agree. */
+@define-color theme_selected_bg_color   @blue;
+@define-color theme_selected_fg_color   @base;
+@define-color link_color                @blue;
+@define-color link_visited_color        @muted;
+
+/* An unfocused window keeps its colours and loses its accent. */
+@define-color theme_unfocused_bg_color          @base;
+@define-color theme_unfocused_base_color        @base;
+@define-color theme_unfocused_fg_color          @text;
+@define-color theme_unfocused_text_color        @text;
+@define-color theme_unfocused_selected_bg_color @overlay;
+@define-color theme_unfocused_selected_fg_color @text;
+
+@define-color insensitive_bg_color      @surface;
+@define-color insensitive_base_color    @surface;
+@define-color insensitive_fg_color      @muted;
+
+/* Magenta rather than red, which is what oxocarbon has and what sway already
+   uses for an urgent window. */
+@define-color warning_color             @yellow;
+@define-color success_color             @green;
+@define-color error_color               @magenta;
+
+@define-color wm_title                  @bright;
+@define-color wm_unfocused_title        @muted;
+@define-color wm_bg                     @surface;
+@define-color wm_border                 @overlay;
+@define-color wm_highlight              @overlay;

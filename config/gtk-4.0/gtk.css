@@ -1,0 +1,9 @@
+/*
+ * GTK 4 user stylesheet.
+ *
+ * libadwaita resolves its named colours at runtime, so redefining them is
+ * enough on its own and there is nothing here to restate. The palette lives
+ * in oxocarbon.css; keep colours there rather than adding them below.
+ */
+
+@import 'oxocarbon.css';

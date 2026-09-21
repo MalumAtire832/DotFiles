@@ -1,0 +1,203 @@
+/*
+ * GTK 3 user stylesheet. Loaded after the theme and at a higher priority, so
+ * it has the last word.
+ *
+ * This is longer than it looks like it should be, and the reason is worth
+ * knowing before shortening it. Adwaita's GTK 3 stylesheet defines the usual
+ * @define-color names and then never uses them: 36 definitions against 787
+ * literal hex values, with zero references to @theme_bg_color. Redefining a
+ * colour therefore changes what other programs read out of the theme and
+ * changes nothing about how the theme paints itself. GTK 4 is the opposite --
+ * libadwaita resolves its names at runtime -- which is why the GTK 4 file next
+ * to this one is a single import and this one is not.
+ *
+ * So the colours still live in oxocarbon.css and nothing below is a literal
+ * hex code, but each surface has to be named and repainted by hand. Anything
+ * not listed here keeps Adwaita's own dark shade.
+ */
+
+@import 'oxocarbon.css';
+
+/* Toplevels. .background is the class GTK puts on every window, so this is
+   the rule that decides whether the desktop reads as oxocarbon or as stock
+   Adwaita grey. */
+.background {
+    background-color: @theme_bg_color;
+    color: @theme_fg_color;
+}
+
+.background:backdrop {
+    background-color: @theme_bg_color;
+    color: @theme_unfocused_fg_color;
+}
+
+/* Content areas: text views, lists, icon views, trees. Carbon keeps these on
+   the page colour rather than stepping them up a shade. */
+.view,
+textview text,
+treeview.view,
+iconview,
+list,
+list row,
+flowbox,
+placesview,
+.view:backdrop,
+textview text:backdrop,
+treeview.view:backdrop,
+list:backdrop {
+    background-color: @theme_base_color;
+    color: @theme_text_color;
+}
+
+.view:selected,
+textview text:selected,
+treeview.view:selected,
+iconview:selected,
+list row:selected,
+flowbox flowboxchild:selected,
+menuitem:hover,
+.view:selected:focus,
+treeview.view:selected:focus,
+list row:selected:focus {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+/* Chrome that floats above the page. */
+headerbar,
+.titlebar,
+toolbar,
+.toolbar,
+menubar,
+searchbar,
+actionbar > revealer > box,
+statusbar,
+notebook > header,
+notebook > header > tabs > tab:checked {
+    background-image: none;
+    background-color: @theme_header_bg;
+    color: @theme_header_fg;
+    border-color: @borders;
+}
+
+headerbar:backdrop,
+.titlebar:backdrop,
+toolbar:backdrop,
+menubar:backdrop,
+notebook > header:backdrop {
+    background-image: none;
+    background-color: @theme_header_bg;
+    color: @wm_unfocused_title;
+}
+
+menu,
+.menu,
+.context-menu,
+popover,
+popover.background,
+popover > contents,
+tooltip,
+tooltip.background {
+    background-color: @theme_header_bg;
+    color: @theme_fg_color;
+    border-color: @borders;
+}
+
+/* The sidebar of a file manager or a preferences window. */
+.sidebar,
+placessidebar,
+stacksidebar,
+paned > separator,
+separator {
+    background-color: @theme_header_bg;
+    color: @theme_fg_color;
+}
+
+.sidebar list,
+placessidebar list,
+stacksidebar list {
+    background-color: @theme_header_bg;
+}
+
+/* Controls. Buttons and entries are the two places where leaving Adwaita's
+   own shade showing reads as a light patch on a dark window. */
+entry,
+spinbutton,
+entry:backdrop,
+searchbar entry {
+    background-image: none;
+    background-color: @theme_base_color;
+    color: @theme_text_color;
+    border-color: @borders;
+}
+
+entry:focus,
+spinbutton:focus {
+    border-color: @theme_selected_bg_color;
+}
+
+button,
+button:backdrop,
+notebook > header > tabs > tab {
+    background-image: none;
+    background-color: @insensitive_bg_color;
+    color: @theme_fg_color;
+    border-color: @borders;
+}
+
+button:hover {
+    background-image: none;
+    background-color: @borders;
+}
+
+button:active,
+button:checked {
+    background-image: none;
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+button:disabled,
+entry:disabled {
+    background-image: none;
+    background-color: @insensitive_bg_color;
+    color: @insensitive_fg_color;
+}
+
+button.suggested-action {
+    background-image: none;
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}
+
+button.destructive-action {
+    background-image: none;
+    background-color: @error_color;
+    color: @theme_selected_fg_color;
+}
+
+scrollbar,
+scrollbar:backdrop {
+    background-color: @theme_bg_color;
+    border-color: @borders;
+}
+
+scrollbar slider {
+    background-color: @muted;
+}
+
+scrollbar slider:hover {
+    background-color: @theme_selected_bg_color;
+}
+
+/* Progress and selection indicators pick up the accent rather than Adwaita's
+   blue, which is a different blue and shows up next to sway's borders. */
+progressbar progress,
+levelbar block.filled,
+scale highlight,
+switch:checked,
+check:checked,
+radio:checked {
+    background-color: @theme_selected_bg_color;
+    color: @theme_selected_fg_color;
+}

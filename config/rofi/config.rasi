@@ -1,0 +1,18 @@
+/* rofi defaults — so any bare `rofi -show …` lands on oxocarbon too,
+ * not just the launcher.sh / powermenu.sh entry points.
+ */
+
+configuration {
+  modi:             "drun,run,window";
+  show-icons:       true;
+  icon-theme:       "Papirus";
+  terminal:         "kitty";
+  display-drun:     "";
+  display-run:      "";
+  display-window:   "";
+  drun-display-format: "{name}";
+  disable-history:  false;
+  sidebar-mode:     false;
+}
+
+@theme "~/.config/rofi/launcher_theme.rasi"

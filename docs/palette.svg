@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1072" height="234" viewBox="0 0 1072 234" role="img" aria-label="Oxocarbon palette">
+<rect width="1072" height="234" fill="#161616"/>
+<style>.n{font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#dde1e6}.h{font:400 10px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#525252}.t{font:600 10px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#525252;letter-spacing:1.2px}</style>
+<text class="t" x="20" y="29">GROUND</text>
+<rect x="20" y="38" width="96" height="46" rx="3" fill="#161616" stroke="#525252" stroke-width="1"/>
+<text class="n" x="20" y="99">base</text>
+<text class="h" x="20" y="112">#161616</text>
+<rect x="124" y="38" width="96" height="46" rx="3" fill="#0f0f0f" stroke="#525252" stroke-width="1"/>
+<text class="n" x="124" y="99">mantle</text>
+<text class="h" x="124" y="112">#0f0f0f</text>
+<rect x="228" y="38" width="96" height="46" rx="3" fill="#262626" stroke="#525252" stroke-width="1"/>
+<text class="n" x="228" y="99">surface</text>
+<text class="h" x="228" y="112">#262626</text>
+<rect x="332" y="38" width="96" height="46" rx="3" fill="#393939" stroke="#525252" stroke-width="1"/>
+<text class="n" x="332" y="99">overlay</text>
+<text class="h" x="332" y="112">#393939</text>
+<rect x="436" y="38" width="96" height="46" rx="3" fill="#525252" stroke="#525252" stroke-width="1"/>
+<text class="n" x="436" y="99">muted</text>
+<text class="h" x="436" y="112">#525252</text>
+<rect x="540" y="38" width="96" height="46" rx="3" fill="#dde1e6" stroke="#525252" stroke-width="1"/>
+<text class="n" x="540" y="99">text</text>
+<text class="h" x="540" y="112">#dde1e6</text>
+<rect x="644" y="38" width="96" height="46" rx="3" fill="#f2f4f8" stroke="#525252" stroke-width="1"/>
+<text class="n" x="644" y="99">bright</text>
+<text class="h" x="644" y="112">#f2f4f8</text>
+<text class="t" x="20" y="126">ACCENT</text>
+<rect x="20" y="135" width="96" height="46" rx="3" fill="#33b1ff" stroke="#525252" stroke-width="1"/>
+<text class="n" x="20" y="196">blue</text>
+<text class="h" x="20" y="209">#33b1ff</text>
+<rect x="124" y="135" width="96" height="46" rx="3" fill="#82cfff" stroke="#525252" stroke-width="1"/>
+<text class="n" x="124" y="196">lightblue</text>
+<text class="h" x="124" y="209">#82cfff</text>
+<rect x="228" y="135" width="96" height="46" rx="3" fill="#3ddbd9" stroke="#525252" stroke-width="1"/>
+<text class="n" x="228" y="196">cyan</text>
+<text class="h" x="228" y="209">#3ddbd9</text>
+<rect x="332" y="135" width="96" height="46" rx="3" fill="#08bdba" stroke="#525252" stroke-width="1"/>
+<text class="n" x="332" y="196">teal</text>
+<text class="h" x="332" y="209">#08bdba</text>
+<rect x="436" y="135" width="96" height="46" rx="3" fill="#42be65" stroke="#525252" stroke-width="1"/>
+<text class="n" x="436" y="196">green</text>
+<text class="h" x="436" y="209">#42be65</text>
+<rect x="540" y="135" width="96" height="46" rx="3" fill="#d2a106" stroke="#525252" stroke-width="1"/>
+<text class="n" x="540" y="196">yellow</text>
+<text class="h" x="540" y="209">#d2a106</text>
+<rect x="644" y="135" width="96" height="46" rx="3" fill="#f1c21b" stroke="#525252" stroke-width="1"/>
+<text class="n" x="644" y="196">brightyellow</text>
+<text class="h" x="644" y="209">#f1c21b</text>
+<rect x="748" y="135" width="96" height="46" rx="3" fill="#ee5396" stroke="#525252" stroke-width="1"/>
+<text class="n" x="748" y="196">magenta</text>
+<text class="h" x="748" y="209">#ee5396</text>
+<rect x="852" y="135" width="96" height="46" rx="3" fill="#ff7eb6" stroke="#525252" stroke-width="1"/>
+<text class="n" x="852" y="196">pink</text>
+<text class="h" x="852" y="209">#ff7eb6</text>
+<rect x="956" y="135" width="96" height="46" rx="3" fill="#be95ff" stroke="#525252" stroke-width="1"/>
+<text class="n" x="956" y="196">purple</text>
+<text class="h" x="956" y="209">#be95ff</text>
+</svg>

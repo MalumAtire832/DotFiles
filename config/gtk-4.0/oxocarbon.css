@@ -1,0 +1,83 @@
+/*
+ * Oxocarbon for GTK 4 and libadwaita -- https://github.com/nyoom-engineering/oxocarbon
+ *
+ * Separate from the GTK 3 palette because libadwaita names its surfaces by
+ * what they are -- window, view, headerbar, card -- rather than by the GTK 3
+ * bg/base pair. The colours are the same; the names are not, so the two files
+ * cannot be shared.
+ *
+ * This is also the only file that reaches a libadwaita application. Those
+ * ignore ~/.themes entirely, so no installed theme can colour them.
+ */
+
+@define-color base      #161616;
+@define-color surface   #262626;
+@define-color overlay   #393939;
+@define-color muted     #525252;
+@define-color text      #dde1e6;
+@define-color bright    #f2f4f8;
+
+@define-color blue      #33b1ff;
+@define-color yellow    #d2a106;
+@define-color green     #42be65;
+@define-color magenta   #ee5396;
+
+/* The page, and the content drawn on it. */
+@define-color window_bg_color           @base;
+@define-color window_fg_color           @bright;
+@define-color view_bg_color             @base;
+@define-color view_fg_color             @bright;
+
+/* Everything that floats above the page sits one layer up. */
+@define-color headerbar_bg_color        @surface;
+@define-color headerbar_fg_color        @bright;
+@define-color headerbar_border_color    @overlay;
+@define-color headerbar_backdrop_color  @surface;
+@define-color sidebar_bg_color          @surface;
+@define-color sidebar_fg_color          @bright;
+@define-color sidebar_backdrop_color    @surface;
+@define-color sidebar_border_color      @overlay;
+@define-color secondary_sidebar_bg_color        @surface;
+@define-color secondary_sidebar_fg_color        @bright;
+@define-color secondary_sidebar_backdrop_color  @surface;
+@define-color secondary_sidebar_border_color    @overlay;
+@define-color card_bg_color             @surface;
+@define-color card_fg_color             @bright;
+@define-color dialog_bg_color           @surface;
+@define-color dialog_fg_color           @bright;
+@define-color popover_bg_color          @surface;
+@define-color popover_fg_color          @bright;
+@define-color thumbnail_bg_color        @surface;
+@define-color thumbnail_fg_color        @bright;
+
+/* The same blue sway paints a focused border with. Text on top of it is the
+   page colour rather than white -- the accent is light, not dark. */
+@define-color accent_bg_color           @blue;
+@define-color accent_fg_color           @base;
+@define-color accent_color              @blue;
+
+/* Magenta rather than red, which is what oxocarbon has and what sway already
+   uses for an urgent window. */
+@define-color destructive_bg_color      @magenta;
+@define-color destructive_fg_color      @base;
+@define-color destructive_color         @magenta;
+@define-color error_bg_color            @magenta;
+@define-color error_fg_color            @base;
+@define-color error_color               @magenta;
+
+@define-color success_bg_color          @green;
+@define-color success_fg_color          @base;
+@define-color success_color             @green;
+@define-color warning_bg_color          @yellow;
+@define-color warning_fg_color          @base;
+@define-color warning_color             @yellow;
+
+/* Separators and the dimming libadwaita lays over a surface. Kept as literal
+   alpha because a shade is a transparency, not one of the ten colours. */
+@define-color shade_color               rgba(0, 0, 0, 0.36);
+@define-color headerbar_shade_color     rgba(0, 0, 0, 0.36);
+@define-color sidebar_shade_color       rgba(0, 0, 0, 0.36);
+@define-color secondary_sidebar_shade_color rgba(0, 0, 0, 0.36);
+@define-color card_shade_color          rgba(0, 0, 0, 0.36);
+@define-color popover_shade_color       rgba(0, 0, 0, 0.36);
+@define-color scrollbar_outline_color   @overlay;

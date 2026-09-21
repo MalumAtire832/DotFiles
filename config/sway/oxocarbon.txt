@@ -1,0 +1,21 @@
+# Oxocarbon — IBM Carbon dark
+# https://github.com/nyoom-engineering/oxocarbon
+
+set $base       #161616
+set $mantle     #0f0f0f
+set $surface    #262626
+set $overlay    #393939
+set $muted      #525252
+set $text       #dde1e6
+set $bright     #f2f4f8
+
+set $blue       #33b1ff
+set $lightblue  #82cfff
+set $yellow     #d2a106
+set $brightyellow #f1c21b
+set $cyan       #3ddbd9
+set $teal       #08bdba
+set $green      #42be65
+set $magenta    #ee5396
+set $pink       #ff7eb6
+set $purple     #be95ff
