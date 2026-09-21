@@ -265,6 +265,43 @@ tool() {
     tool_post+=("$post")
 }
 
+# ---------------------------------------------------------------------------
+# Linking
+# ---------------------------------------------------------------------------
+
+link() {
+    # Point $2 at $1, backing up anything real already there.
+    #
+    # The target is absolute. The previous version computed a relative path
+    # with `realpath --relative-to=`, which is GNU-only and fails on BSD.
+    # Existing relative links resolve to the same place, so they are reported
+    # ok and left untouched rather than churned.
+    local src=$1 dest=$2
+
+    if [ "${dry_run:-0}" = 1 ]; then
+        if [ -L "$dest" ] && [ "$(resolve "$dest")" = "$(resolve "$src")" ]; then
+            printf '  ok     %s\n' "$dest"
+        else
+            printf '  link   %s (dry run)\n' "$dest"
+        fi
+        return 0
+    fi
+
+    if [ -L "$dest" ] && [ "$(resolve "$dest")" = "$(resolve "$src")" ]; then
+        printf '  ok     %s\n' "$dest"
+        return 0
+    fi
+
+    if [ -e "$dest" ] || [ -L "$dest" ]; then
+        mv -- "$dest" "$dest.backup-$stamp"
+        printf '  backup %s.backup-%s\n' "$dest" "$stamp"
+    fi
+
+    mkdir -p -- "$(dirname -- "$dest")"
+    ln -s -- "$(resolve "$src")" "$dest"
+    printf '  link   %s\n' "$dest"
+}
+
 main() {
     printf 'not implemented yet\n'
 }

@@ -435,6 +435,104 @@ run_test test_list_contains_is_not_confused_by_a_glob_in_the_list
 run_test test_tool_rejects_a_flag_shaped_value
 run_test test_tool_rejects_a_duplicate_name
 
+# --------------------------------------------------------------------------
+# link()
+# --------------------------------------------------------------------------
+
+test_link_creates_an_absolute_symlink() {
+    local box
+    box=$(sandbox)
+    mkdir -p "$box/src" "$box/home"
+    link "$box/src" "$box/home/target" >/dev/null
+    if [ ! -L "$box/home/target" ]; then
+        fail "no symlink created"
+        return
+    fi
+    assert_eq "$(readlink "$box/home/target")" "$(resolve "$box/src")" "absolute target"
+}
+
+test_link_reports_ok_for_an_existing_correct_link() {
+    local box out
+    box=$(sandbox)
+    mkdir -p "$box/src" "$box/home"
+    link "$box/src" "$box/home/target" >/dev/null
+    out=$(link "$box/src" "$box/home/target")
+    assert_contains "$out" "ok" "second run reports ok"
+}
+
+test_link_leaves_an_existing_relative_link_alone() {
+    # The Fedora machine already has relative links from the old script. They
+    # resolve to the right place, so they must be reported ok, not recreated.
+    local box out
+    box=$(sandbox)
+    mkdir -p "$box/src" "$box/home"
+    ln -s -- "../src" "$box/home/target"
+    out=$(link "$box/src" "$box/home/target")
+    assert_contains "$out" "ok" "relative link reported ok"
+    assert_eq "$(readlink "$box/home/target")" "../src" "relative link untouched"
+}
+
+test_link_backs_up_a_real_directory_in_the_way() {
+    local box
+    box=$(sandbox)
+    mkdir -p "$box/src" "$box/home/target"
+    : > "$box/home/target/keepme"
+    link "$box/src" "$box/home/target" >/dev/null
+    if [ ! -L "$box/home/target" ]; then
+        fail "target is not a symlink after backup"
+    fi
+    if ! ls -d "$box/home/target.backup-"* >/dev/null 2>&1; then
+        fail "no backup directory created"
+        return
+    fi
+    if [ ! -f "$(ls -d "$box/home/target.backup-"*)/keepme" ]; then
+        fail "backup did not preserve contents"
+    fi
+}
+
+test_link_replaces_a_symlink_pointing_somewhere_else() {
+    local box
+    box=$(sandbox)
+    mkdir -p "$box/src" "$box/other" "$box/home"
+    ln -s -- "$box/other" "$box/home/target"
+    link "$box/src" "$box/home/target" >/dev/null
+    assert_eq "$(resolve "$box/home/target")" "$(resolve "$box/src")" "repointed"
+}
+
+test_link_creates_missing_parent_directories() {
+    local box
+    box=$(sandbox)
+    mkdir -p "$box/src"
+    link "$box/src" "$box/home/deep/target" >/dev/null
+    if [ ! -L "$box/home/deep/target" ]; then
+        fail "parent directories not created"
+    fi
+}
+
+test_link_reports_ok_for_an_existing_file_link() {
+    # home/.zshrc and home/.zprofile are files, not directories. This is the
+    # case a resolve() that does not dereference symlinks gets wrong, silently
+    # backing up and relinking a correct link on every run.
+    local box out
+    box=$(sandbox)
+    mkdir -p "$box/repo" "$box/home"
+    : > "$box/repo/.zshrc"
+    link "$box/repo/.zshrc" "$box/home/.zshrc" >/dev/null
+    out=$(link "$box/repo/.zshrc" "$box/home/.zshrc")
+    assert_contains "$out" "ok" "file link reported ok on second run"
+    if ls -d "$box/home/.zshrc.backup-"* >/dev/null 2>&1; then
+        fail "a correct file link was backed up and relinked"
+    fi
+}
+
+run_test test_link_creates_an_absolute_symlink
+run_test test_link_reports_ok_for_an_existing_correct_link
+run_test test_link_leaves_an_existing_relative_link_alone
+run_test test_link_backs_up_a_real_directory_in_the_way
+run_test test_link_replaces_a_symlink_pointing_somewhere_else
+run_test test_link_creates_missing_parent_directories
+run_test test_link_reports_ok_for_an_existing_file_link
+
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
 
