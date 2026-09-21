@@ -383,6 +383,44 @@ test_tool_rejects_a_flag_with_no_value() {
     assert_contains "$out" "--platforms needs a value" "dangling flag message"
 }
 
+test_list_contains_is_not_confused_by_a_glob_in_the_list() {
+    # Splitting the list requires leaving it unquoted, which also enables
+    # pathname expansion. Without `set -f` the list "fedora * macos" becomes
+    # the filenames in the caller's directory, so the answer depends on where
+    # the script was run from.
+    local box status
+    box=$(sandbox)
+    : > "$box/decoy-one"
+    : > "$box/decoy-two"
+
+    ( cd "$box" || exit 1; list_contains '*' "fedora * macos" )
+    status=$?
+    assert_ok $status "a literal * in the list is found"
+
+    ( cd "$box" || exit 1; list_contains decoy-one "fedora * macos" )
+    status=$?
+    assert_fails $status "a filename must not match through glob expansion"
+}
+
+test_tool_rejects_a_flag_shaped_value() {
+    manifest_reset
+    local out
+    out=$(tool bad --platforms --config sway 2>&1)
+    assert_fails $? "flag-shaped value status"
+    assert_contains "$out" "is missing its value" "flag-shaped value message"
+    assert_eq "${#tool_names[@]}" "0" "nothing recorded"
+}
+
+test_tool_rejects_a_duplicate_name() {
+    manifest_reset
+    tool dup --platforms fedora
+    local out
+    out=$(tool dup --platforms macos 2>&1)
+    assert_fails $? "duplicate name status"
+    assert_contains "$out" "declared twice" "duplicate name message"
+    assert_eq "${#tool_names[@]}" "1" "duplicate not recorded"
+}
+
 run_test test_list_contains_finds_a_word
 run_test test_list_contains_rejects_a_missing_word
 run_test test_list_contains_rejects_a_partial_match
@@ -393,6 +431,9 @@ run_test test_tool_records_several_tools_in_order
 run_test test_tool_rejects_an_unknown_flag
 run_test test_tool_requires_platforms
 run_test test_tool_rejects_a_flag_with_no_value
+run_test test_list_contains_is_not_confused_by_a_glob_in_the_list
+run_test test_tool_rejects_a_flag_shaped_value
+run_test test_tool_rejects_a_duplicate_name
 
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"

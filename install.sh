@@ -138,6 +138,10 @@ detect_platform() {
 # on Apple's /bin/bash.
 # ---------------------------------------------------------------------------
 
+# Read these by index, never as "${tool_names[@]}". In bash 3.2 — which is
+# what this has to run on — expanding an empty array that way under `set -u`
+# is an unbound-variable error that kills the script. `${#tool_names[@]}` is
+# safe, so an index loop bounded by it is the idiom to use.
 tool_names=()
 tool_platforms=()
 tool_config=()
@@ -158,16 +162,27 @@ manifest_reset() {
     tool_post=()
 }
 
-list_contains() {
+list_contains() (
     # True when the whole word $1 appears in the space-separated list $2.
-    local needle=$1 word
+    #
+    # The body is a subshell — ( ) rather than { } — so `set -f` is local to
+    # it. Splitting $2 requires leaving it unquoted, and an unquoted expansion
+    # does pathname expansion as well as word splitting: a list containing *
+    # or ? would otherwise expand against whatever directory the caller
+    # happens to be in, so the same inputs would give different answers
+    # depending on where the script was run from.
+    #
+    # The comparison side is already safe: [ ] with both operands quoted is a
+    # literal string comparison, never a pattern match.
+    set -f
+    needle=$1
     for word in $2; do
         if [ "$word" = "$needle" ]; then
-            return 0
+            exit 0
         fi
     done
-    return 1
-}
+    exit 1
+)
 
 tool() {
     # tool <name> --platforms "<ids>" [--config <dir>] [--home "<entries>"]
@@ -176,6 +191,14 @@ tool() {
     #
     # Unknown flags are an error rather than being ignored, so a typo in the
     # manifest surfaces immediately instead of silently dropping a dependency.
+    # For the same reason a value that is itself flag-shaped is rejected: in
+    # `tool x --platforms --config sway` the author forgot the platforms
+    # value, and taking "--config" as that value would give the tool a
+    # platform matching nothing, so it would install nowhere and say nothing.
+    #
+    # A repeated flag takes the last value, as command lines usually do. A
+    # repeated tool name is an error: later tasks iterate these arrays to
+    # install and link, so a copy-pasted duplicate would do both twice.
     local name=${1:-}
     shift || true
 
@@ -193,6 +216,13 @@ tool() {
                     printf 'manifest: %s needs a value (tool %s)\n' "$1" "$name" >&2
                     return 1
                 fi
+                case $2 in
+                    --*)
+                        printf 'manifest: %s is missing its value (tool %s), got %s\n' \
+                            "$1" "$name" "$2" >&2
+                        return 1
+                        ;;
+                esac
                 case $1 in
                     --platforms) platforms=$2 ;;
                     --config)    config=$2 ;;
@@ -215,6 +245,15 @@ tool() {
         printf 'manifest: --platforms is required (tool %s)\n' "$name" >&2
         return 1
     fi
+
+    local i=0
+    while [ "$i" -lt "${#tool_names[@]}" ]; do
+        if [ "${tool_names[$i]}" = "$name" ]; then
+            printf 'manifest: %s is declared twice\n' "$name" >&2
+            return 1
+        fi
+        i=$((i + 1))
+    done
 
     tool_names+=("$name")
     tool_platforms+=("$platforms")
