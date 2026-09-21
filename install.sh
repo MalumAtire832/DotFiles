@@ -338,6 +338,15 @@ missing_packages() {
     # emits it as one line — `printf '%s\n' $missing` unquoted would instead
     # cycle its format once per word, printing each on its own line.
     local pkg missing='' pkgs
+
+    # An empty list is ordinary — a tool that declares no packages for this
+    # platform. Returning before the read also avoids expanding an empty array
+    # as "${pkgs[@]}", which in bash 3.2 under `set -u` is an unbound-variable
+    # error that kills the script rather than expanding to nothing.
+    if [ -z "${1// /}" ]; then
+        return 0
+    fi
+
     read -r -a pkgs <<< "$1"
     for pkg in "${pkgs[@]}"; do
         case "$platform" in
@@ -363,7 +372,13 @@ missing_packages() {
 }
 
 missing_casks() {
+    # As missing_packages, for Homebrew casks. See its comments.
     local pkg missing='' pkgs
+
+    if [ -z "${1// /}" ]; then
+        return 0
+    fi
+
     load_brew_cache
     read -r -a pkgs <<< "$1"
     for pkg in "${pkgs[@]}"; do

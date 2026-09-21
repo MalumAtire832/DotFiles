@@ -691,6 +691,58 @@ test_install_packages_skips_the_manager_in_dry_run() {
     assert_eq "$(wc -l < "$box/calls.log" | tr -d ' ')" "0" "dry run invoked nothing"
 }
 
+test_missing_packages_handles_an_empty_list() {
+    # A tool declaring no packages for this platform. Before the guard this
+    # died with "pkgs[@]: unbound variable" — bash 3.2 treats expanding an
+    # empty array under `set -u` as an error, not as nothing.
+    local box out status
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    out=$(PATH="$box/bin:$PATH"; platform=macos; missing_packages "" 2>&1)
+    status=$?
+    assert_ok $status "empty list does not crash"
+    assert_eq "$out" "" "empty list yields nothing"
+}
+
+test_missing_casks_handles_an_empty_list() {
+    local box out status
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    out=$(PATH="$box/bin:$PATH"; platform=macos; missing_casks "" 2>&1)
+    status=$?
+    assert_ok $status "empty cask list does not crash"
+    assert_eq "$out" "" "empty cask list yields nothing"
+}
+
+test_missing_casks_filters_installed_casks() {
+    # Casks are queried separately from formulae. A cask already installed
+    # must not be reinstalled on every run.
+    local box out
+    box=$(sandbox)
+    make_shims "$box" "" "font-one" ""
+    out=$(
+        PATH="$box/bin:$PATH"
+        platform=macos
+        load_brew_cache
+        missing_casks "font-one font-two"
+    )
+    assert_eq "$out" "font-two" "only the uninstalled cask is missing"
+}
+
+test_install_casks_passes_the_cask_flag() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    (
+        PATH="$box/bin:$PATH"
+        platform=macos
+        dry_run=0
+        install_casks "font-one font-two"
+    ) >/dev/null 2>&1
+    assert_contains "$(cat "$box/calls.log")" "install --cask font-one font-two" \
+        "casks installed with --cask in one call"
+}
+
 run_test test_missing_packages_filters_installed_rpms
 run_test test_missing_packages_returns_everything_when_none_installed
 run_test test_missing_packages_is_empty_when_all_installed
@@ -700,6 +752,10 @@ run_test test_install_packages_invokes_dnf_once_for_the_whole_set
 run_test test_install_packages_does_nothing_when_the_set_is_empty
 run_test test_install_packages_reports_failure
 run_test test_install_packages_skips_the_manager_in_dry_run
+run_test test_missing_packages_handles_an_empty_list
+run_test test_missing_casks_handles_an_empty_list
+run_test test_missing_casks_filters_installed_casks
+run_test test_install_casks_passes_the_cask_flag
 
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
