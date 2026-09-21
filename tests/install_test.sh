@@ -930,6 +930,67 @@ run_test test_a_configured_machine_invokes_no_package_manager
 run_test test_an_unknown_platform_is_a_hard_error
 run_test test_post_command_runs_after_install
 
+# --------------------------------------------------------------------------
+# --dry-run
+# --------------------------------------------------------------------------
+
+test_dry_run_creates_no_links() {
+    local box repo home out
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" ""
+    out=$(run_install "$repo" "$home" "$box" macos --dry-run)
+    if [ -e "$home/.config/alpha" ]; then fail "dry run created a link: $out"; fi
+    if [ -e "$home/.zshrc" ]; then fail "dry run created a home link: $out"; fi
+}
+
+test_dry_run_invokes_no_package_manager() {
+    local box repo home
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" ""
+    run_install "$repo" "$home" "$box" macos --dry-run >/dev/null
+    if grep -q '^brew install' "$box/calls.log"; then
+        fail "dry run invoked brew install"
+    fi
+}
+
+test_dry_run_reports_what_it_would_do() {
+    local box repo home out
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" ""
+    out=$(run_install "$repo" "$home" "$box" macos --dry-run)
+    assert_contains "$out" "would install alpha" "reports the install"
+    assert_contains "$out" "dry run" "marks links as dry"
+}
+
+test_help_exits_zero_and_changes_nothing() {
+    local box repo home out status
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" ""
+    out=$(run_install "$repo" "$home" "$box" macos --help); status=$?
+    assert_ok $status "--help exits zero"
+    assert_contains "$out" "Usage: install.sh" "prints usage"
+    if [ -e "$home/.config/alpha" ]; then fail "--help linked something"; fi
+}
+
+test_an_unknown_flag_is_rejected() {
+    local box repo home status
+    box=$(sandbox); repo="$box/repo"; home="$box/home"
+    make_fake_repo "$repo"; mkdir -p "$home"
+    make_shims "$box" "" "" ""
+    run_install "$repo" "$home" "$box" macos --nonsense >/dev/null; status=$?
+    assert_fails $status "unknown flag rejected"
+}
+
+run_test test_dry_run_creates_no_links
+run_test test_dry_run_invokes_no_package_manager
+run_test test_dry_run_reports_what_it_would_do
+run_test test_help_exits_zero_and_changes_nothing
+run_test test_an_unknown_flag_is_rejected
+
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
 
