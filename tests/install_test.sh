@@ -533,6 +533,174 @@ run_test test_link_replaces_a_symlink_pointing_somewhere_else
 run_test test_link_creates_missing_parent_directories
 run_test test_link_reports_ok_for_an_existing_file_link
 
+# --------------------------------------------------------------------------
+# Package installation
+#
+# dnf, rpm, brew and sudo are replaced with shims on PATH that log their
+# arguments to a file, so these tests never touch the real system.
+# --------------------------------------------------------------------------
+
+make_shims() {
+    # make_shims <dir> <brew-formulae> <brew-casks> <installed-rpms>
+    # Creates dnf/rpm/brew/sudo shims in <dir>/bin, logging to <dir>/calls.log.
+    local dir=$1 formulae=$2 casks=$3 rpms=$4
+    mkdir -p "$dir/bin"
+    : > "$dir/calls.log"
+
+    cat > "$dir/bin/brew" <<SHIM
+#!/bin/sh
+printf 'brew %s\n' "\$*" >> "$dir/calls.log"
+case "\$1 \$2" in
+    "list --formula") printf '%s\n' $formulae ;;
+    "list --cask")    printf '%s\n' $casks ;;
+    *) [ -f "$dir/fail" ] && { printf 'brew: simulated failure\n' >&2; exit 1; } ;;
+esac
+exit 0
+SHIM
+
+    cat > "$dir/bin/rpm" <<SHIM
+#!/bin/sh
+printf 'rpm %s\n' "\$*" >> "$dir/calls.log"
+for installed in $rpms; do
+    [ "\$3" = "\$installed" ] && exit 0
+done
+exit 1
+SHIM
+
+    cat > "$dir/bin/dnf" <<SHIM
+#!/bin/sh
+printf 'dnf %s\n' "\$*" >> "$dir/calls.log"
+[ -f "$dir/fail" ] && { printf 'dnf: simulated failure\n' >&2; exit 1; }
+exit 0
+SHIM
+
+    cat > "$dir/bin/sudo" <<SHIM
+#!/bin/sh
+shift_args=\$*
+printf 'sudo %s\n' "\$shift_args" >> "$dir/calls.log"
+exec "\$@"
+SHIM
+
+    chmod +x "$dir/bin/brew" "$dir/bin/rpm" "$dir/bin/dnf" "$dir/bin/sudo"
+}
+
+test_missing_packages_filters_installed_rpms() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" "btop zsh"
+    assert_eq "$(PATH="$box/bin:$PATH"; platform=fedora; missing_packages "btop zsh helix")" \
+        "helix" "only helix missing"
+}
+
+test_missing_packages_returns_everything_when_none_installed() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    assert_eq "$(PATH="$box/bin:$PATH"; platform=fedora; missing_packages "btop helix")" \
+        "btop helix" "both missing"
+}
+
+test_missing_packages_is_empty_when_all_installed() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" "btop helix"
+    assert_eq "$(PATH="$box/bin:$PATH"; platform=fedora; missing_packages "btop helix")" \
+        "" "nothing missing"
+}
+
+test_missing_brew_formulae_uses_the_cached_list() {
+    local box out
+    box=$(sandbox)
+    make_shims "$box" "rbenv zsh" "" ""
+    out=$(
+        PATH="$box/bin:$PATH"
+        platform=macos
+        load_brew_cache
+        missing_packages "rbenv helix"
+    )
+    assert_eq "$out" "helix" "helix missing, rbenv present"
+}
+
+test_load_brew_cache_queries_formulae_and_casks_once_each() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "rbenv" "amethyst" ""
+    (
+        PATH="$box/bin:$PATH"
+        platform=macos
+        load_brew_cache
+        missing_packages "rbenv zsh" >/dev/null
+        missing_packages "rbenv helix" >/dev/null
+    )
+    assert_eq "$(grep -c 'brew list --formula' "$box/calls.log")" "1" "formulae queried once"
+    assert_eq "$(grep -c 'brew list --cask' "$box/calls.log")" "1" "casks queried once"
+}
+
+test_install_packages_invokes_dnf_once_for_the_whole_set() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    (
+        PATH="$box/bin:$PATH"
+        platform=fedora
+        dry_run=0
+        install_packages "sway grim slurp"
+    ) >/dev/null 2>&1
+    assert_eq "$(grep -c '^dnf install' "$box/calls.log")" "1" "one dnf call"
+    assert_contains "$(cat "$box/calls.log")" "sway grim slurp" "all packages in one call"
+}
+
+test_install_packages_does_nothing_when_the_set_is_empty() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    (
+        PATH="$box/bin:$PATH"
+        platform=fedora
+        dry_run=0
+        install_packages ""
+    ) >/dev/null 2>&1
+    assert_eq "$(wc -l < "$box/calls.log" | tr -d ' ')" "0" "no package manager invoked"
+}
+
+test_install_packages_reports_failure() {
+    local box status
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    : > "$box/fail"
+    (
+        PATH="$box/bin:$PATH"
+        platform=fedora
+        dry_run=0
+        install_packages "sway"
+    ) >/dev/null 2>&1
+    status=$?
+    assert_fails $status "failure propagated"
+}
+
+test_install_packages_skips_the_manager_in_dry_run() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    (
+        PATH="$box/bin:$PATH"
+        platform=fedora
+        dry_run=1
+        install_packages "sway"
+    ) >/dev/null 2>&1
+    assert_eq "$(wc -l < "$box/calls.log" | tr -d ' ')" "0" "dry run invoked nothing"
+}
+
+run_test test_missing_packages_filters_installed_rpms
+run_test test_missing_packages_returns_everything_when_none_installed
+run_test test_missing_packages_is_empty_when_all_installed
+run_test test_missing_brew_formulae_uses_the_cached_list
+run_test test_load_brew_cache_queries_formulae_and_casks_once_each
+run_test test_install_packages_invokes_dnf_once_for_the_whole_set
+run_test test_install_packages_does_nothing_when_the_set_is_empty
+run_test test_install_packages_reports_failure
+run_test test_install_packages_skips_the_manager_in_dry_run
+
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
 

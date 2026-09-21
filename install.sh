@@ -302,6 +302,130 @@ link() {
     printf '  link   %s\n' "$dest"
 }
 
+# ---------------------------------------------------------------------------
+# Packages
+#
+# What is already installed is queried locally — rpm -q on Fedora, brew list on
+# macOS. Neither needs privileges or the network, so a machine that is already
+# configured runs the whole script without ever invoking a package manager.
+# ---------------------------------------------------------------------------
+
+brew_formulae=''
+brew_casks=''
+brew_cache_loaded=0
+
+load_brew_cache() {
+    # brew list is slow enough to be worth doing once. --formula and --cask are
+    # separate queries: a plain `brew list` conflates them, so a cask-installed
+    # font would never match a --cask declaration and would reinstall forever.
+    if [ "$brew_cache_loaded" = 1 ]; then
+        return 0
+    fi
+    brew_formulae=$(brew list --formula 2>/dev/null || true)
+    brew_casks=$(brew list --cask 2>/dev/null || true)
+    brew_cache_loaded=1
+}
+
+missing_packages() {
+    # Print the subset of the space-separated list $1 that is not installed.
+    #
+    # $1 is split with `read -a` rather than an unquoted `for pkg in $1`: the
+    # latter performs pathname expansion as well as word splitting, so a
+    # package name containing * or ? would expand against files in the
+    # caller's working directory (the same hazard list_contains had before it
+    # was made glob-safe). `read -a` only field-splits, never globs, and the
+    # result is built without a leading separator so a single quoted printf
+    # emits it as one line — `printf '%s\n' $missing` unquoted would instead
+    # cycle its format once per word, printing each on its own line.
+    local pkg missing='' pkgs
+    read -r -a pkgs <<< "$1"
+    for pkg in "${pkgs[@]}"; do
+        case "$platform" in
+            fedora)
+                if rpm -q --quiet "$pkg"; then
+                    continue
+                fi
+                ;;
+            macos)
+                load_brew_cache
+                if list_contains "$pkg" "$brew_formulae"; then
+                    continue
+                fi
+                ;;
+        esac
+        if [ -z "$missing" ]; then
+            missing=$pkg
+        else
+            missing="$missing $pkg"
+        fi
+    done
+    printf '%s\n' "$missing"
+}
+
+missing_casks() {
+    local pkg missing='' pkgs
+    load_brew_cache
+    read -r -a pkgs <<< "$1"
+    for pkg in "${pkgs[@]}"; do
+        if list_contains "$pkg" "$brew_casks"; then
+            continue
+        fi
+        if [ -z "$missing" ]; then
+            missing=$pkg
+        else
+            missing="$missing $pkg"
+        fi
+    done
+    printf '%s\n' "$missing"
+}
+
+install_packages() {
+    # Install the space-separated list $1 in one transaction. Nothing to do for
+    # an empty list, which is the common case on a configured machine.
+    #
+    # $1 is split into an array with `read -a` and passed as "${pkgs[@]}"
+    # rather than word-split with a bare unquoted $1: the latter also performs
+    # pathname expansion, so a package name containing * or ? would expand
+    # against files in the caller's working directory before ever reaching
+    # dnf/brew.
+    local pkgs
+    if [ -z "${1// /}" ]; then
+        return 0
+    fi
+
+    if [ "${dry_run:-0}" = 1 ]; then
+        printf '  would install %s\n' "$1"
+        return 0
+    fi
+
+    read -r -a pkgs <<< "$1"
+    case "$platform" in
+        fedora)
+            sudo dnf install -y "${pkgs[@]}"
+            ;;
+        macos)
+            brew install "${pkgs[@]}"
+            ;;
+        *)
+            printf 'no package manager for platform %s\n' "$platform" >&2
+            return 1
+            ;;
+    esac
+}
+
+install_casks() {
+    local pkgs
+    if [ -z "${1// /}" ]; then
+        return 0
+    fi
+    if [ "${dry_run:-0}" = 1 ]; then
+        printf '  would install cask %s\n' "$1"
+        return 0
+    fi
+    read -r -a pkgs <<< "$1"
+    brew install --cask "${pkgs[@]}"
+}
+
 main() {
     printf 'not implemented yet\n'
 }
