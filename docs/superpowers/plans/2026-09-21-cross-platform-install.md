@@ -75,6 +75,8 @@ set +e
 
 tests_run=0
 tests_failed=0
+tests_skipped=0
+skipped_this_test=0
 current_test=""
 sandboxes=()
 
@@ -127,15 +129,30 @@ assert_fails() {
     fi
 }
 
+skip() {
+    # skip <reason> — declare that this test cannot run on this machine.
+    #
+    # Skipped tests are counted separately and never reported as "ok". A test
+    # that did not run but prints a pass is false confidence about coverage,
+    # which is exactly how a real bug reached review earlier in this plan.
+    tests_skipped=$((tests_skipped + 1))
+    skipped_this_test=1
+    printf '  skip %s (%s)\n' "$current_test" "$1"
+}
+
 run_test() {
     case "$1" in
         *"$filter"*) ;;
         *) return 0 ;;
     esac
     current_test=$1
-    tests_run=$((tests_run + 1))
+    skipped_this_test=0
     local before=$tests_failed
     "$1"
+    if [ "$skipped_this_test" = 1 ]; then
+        return 0
+    fi
+    tests_run=$((tests_run + 1))
     if [ "$tests_failed" = "$before" ]; then
         printf '  ok   %s\n' "$1"
     fi
@@ -223,11 +240,12 @@ run_test test_resolve_follows_a_relative_symlink
 run_test test_resolve_fails_on_a_missing_parent
 run_test test_resolve_detects_a_symlink_loop
 
-printf '\n%d test(s), %d failure(s)\n' "$tests_run" "$tests_failed"
+printf '\n%d test(s), %d failure(s), %d skipped\n' \
+    "$tests_run" "$tests_failed" "$tests_skipped"
 
 # A mistyped filter would otherwise print "0 test(s), 0 failure(s)" and exit 0,
 # which reads exactly like a pass.
-if [ -n "$filter" ] && [ "$tests_run" = 0 ]; then
+if [ -n "$filter" ] && [ "$tests_run" = 0 ] && [ "$tests_skipped" = 0 ]; then
     printf 'No test matched filter [%s]\n' "$filter" >&2
     exit 1
 fi
@@ -331,7 +349,7 @@ fi
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `8 test(s), 0 failure(s)`, exit 0.
+Expected: `8 test(s), 0 failure(s), 0 skipped`, exit 0.
 
 - [ ] **Step 5: Verify the script still parses and is not executable-broken**
 
@@ -375,7 +393,7 @@ test_detect_platform_honours_the_override() {
 
 test_detect_platform_reports_macos_on_darwin() {
     if [ "$(uname -s)" != Darwin ]; then
-        printf '  skip %s (not Darwin)\n' "$current_test"
+        skip "not Darwin"
         return 0
     fi
     assert_eq "$(detect_platform)" "macos" "darwin"
@@ -383,7 +401,7 @@ test_detect_platform_reports_macos_on_darwin() {
 
 test_detect_platform_reads_os_release_id_on_linux() {
     if [ "$(uname -s)" != Linux ]; then
-        printf '  skip %s (not Linux)\n' "$current_test"
+        skip "not Linux"
         return 0
     fi
     local expected
@@ -454,7 +472,7 @@ detect_platform() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `12 test(s), 0 failure(s)` on macOS (one of the platform tests reports `skip`).
+Expected: `11 test(s), 0 failure(s), 1 skipped` on macOS. The Linux-only platform test is skipped, and a skipped test is never reported as `ok`.
 
 - [ ] **Step 5: Commit**
 
@@ -688,7 +706,7 @@ tool() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `22 test(s), 0 failure(s)`.
+Expected: `21 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -867,7 +885,7 @@ link() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `29 test(s), 0 failure(s)`.
+Expected: `28 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1181,7 +1199,7 @@ Note: `${1// /}` is bash pattern substitution, available in bash 3.2. It collaps
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `38 test(s), 0 failure(s)`.
+Expected: `37 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1566,7 +1584,7 @@ main() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `47 test(s), 0 failure(s)`.
+Expected: `46 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Verify syntax**
 
@@ -1676,7 +1694,7 @@ Expected: PASS. If any fail, fix `install.sh` — the behaviour is meant to exis
 - [ ] **Step 3: Run the whole suite**
 
 Run: `tests/install_test.sh`
-Expected: `52 test(s), 0 failure(s)`.
+Expected: `51 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 4: Commit**
 
@@ -1784,7 +1802,7 @@ Expected: `Platform: macos`, no `unassigned:` lines (every one of the eight `con
 - [ ] **Step 4: Run the suite**
 
 Run: `tests/install_test.sh`
-Expected: `52 test(s), 0 failure(s)`. The tests use their own fake manifest, so the real one cannot affect them.
+Expected: `51 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
 
 - [ ] **Step 5: Commit**
 
@@ -2145,7 +2163,7 @@ silently on a machine the author is probably not sitting at."
 - [ ] **Step 1: Run the full suite**
 
 Run: `tests/install_test.sh`
-Expected: `52 test(s), 0 failure(s)`, exit 0.
+Expected: `51 test(s), 0 failure(s), 1 skipped`, exit 0.
 
 - [ ] **Step 2: Syntax-check everything**
 
