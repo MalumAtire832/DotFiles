@@ -198,7 +198,7 @@ test_os_release_id_reads_an_unquoted_id() {
     # Fedora writes ID=fedora with no quotes.
     local box
     box=$(sandbox)
-    printf 'NAME=Fedora Linux\nID=fedora\n' > "$box/os-release"
+    printf 'NAME="Fedora Linux"\nID=fedora\n' > "$box/os-release"
     assert_eq "$(os_release_id "$box/os-release")" "fedora" "unquoted ID"
 }
 
@@ -239,7 +239,7 @@ test_os_release_id_does_not_leak_variables() {
     # the real file would pass trivially on Darwin, where this code never runs.
     local box ID NAME VERSION
     box=$(sandbox)
-    printf 'NAME=Fedora Linux\nID=fedora\nVERSION=41\n' > "$box/os-release"
+    printf 'NAME="Fedora Linux"\nID=fedora\nVERSION=41\n' > "$box/os-release"
     ID="sentinel"
     NAME="sentinel"
     VERSION="sentinel"
