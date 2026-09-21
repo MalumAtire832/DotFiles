@@ -301,6 +301,99 @@ run_test test_detect_platform_ignores_a_whitespace_only_override
 run_test test_detect_platform_reports_macos_on_darwin
 run_test test_detect_platform_reads_os_release_id_on_linux
 
+# --------------------------------------------------------------------------
+# list_contains() and tool()
+# --------------------------------------------------------------------------
+
+test_list_contains_finds_a_word() {
+    list_contains fedora "fedora macos"
+    assert_ok $? "present"
+}
+
+test_list_contains_rejects_a_missing_word() {
+    list_contains arch "fedora macos"
+    assert_fails $? "absent"
+}
+
+test_list_contains_rejects_a_partial_match() {
+    # "fedora" must not match inside "fedora-silverblue".
+    list_contains fedora "fedora-silverblue"
+    assert_fails $? "partial"
+}
+
+test_list_contains_handles_an_empty_list() {
+    list_contains fedora ""
+    assert_fails $? "empty"
+}
+
+test_tool_records_every_field() {
+    manifest_reset
+    tool btop --platforms "fedora macos" --config btop \
+        --dnf "btop" --brew "btop"
+    assert_eq "${#tool_names[@]}" "1" "one tool recorded"
+    assert_eq "${tool_names[0]}" "btop" "name"
+    assert_eq "${tool_platforms[0]}" "fedora macos" "platforms"
+    assert_eq "${tool_config[0]}" "btop" "config"
+    assert_eq "${tool_dnf[0]}" "btop" "dnf"
+    assert_eq "${tool_brew[0]}" "btop" "brew"
+    assert_eq "${tool_home[0]}" "" "home defaults empty"
+    assert_eq "${tool_cask[0]}" "" "cask defaults empty"
+    assert_eq "${tool_post[0]}" "" "post defaults empty"
+}
+
+test_tool_records_home_entries_and_post() {
+    manifest_reset
+    tool zsh --platforms "fedora macos" --home ".zshrc .zprofile .zsh" \
+        --dnf "zsh" --post "echo done"
+    assert_eq "${tool_home[0]}" ".zshrc .zprofile .zsh" "home"
+    assert_eq "${tool_post[0]}" "echo done" "post"
+    assert_eq "${tool_config[0]}" "" "config defaults empty"
+}
+
+test_tool_records_several_tools_in_order() {
+    manifest_reset
+    tool a --platforms fedora
+    tool b --platforms macos
+    assert_eq "${#tool_names[@]}" "2" "two tools"
+    assert_eq "${tool_names[0]}" "a" "first"
+    assert_eq "${tool_names[1]}" "b" "second"
+}
+
+test_tool_rejects_an_unknown_flag() {
+    manifest_reset
+    local out
+    out=$(tool bad --platforms fedora --nonsense x 2>&1)
+    assert_fails $? "unknown flag status"
+    assert_contains "$out" "unknown option --nonsense" "unknown flag message"
+}
+
+test_tool_requires_platforms() {
+    manifest_reset
+    local out
+    out=$(tool bad --config bad 2>&1)
+    assert_fails $? "missing platforms status"
+    assert_contains "$out" "--platforms is required" "missing platforms message"
+}
+
+test_tool_rejects_a_flag_with_no_value() {
+    manifest_reset
+    local out
+    out=$(tool bad --platforms 2>&1)
+    assert_fails $? "dangling flag status"
+    assert_contains "$out" "--platforms needs a value" "dangling flag message"
+}
+
+run_test test_list_contains_finds_a_word
+run_test test_list_contains_rejects_a_missing_word
+run_test test_list_contains_rejects_a_partial_match
+run_test test_list_contains_handles_an_empty_list
+run_test test_tool_records_every_field
+run_test test_tool_records_home_entries_and_post
+run_test test_tool_records_several_tools_in_order
+run_test test_tool_rejects_an_unknown_flag
+run_test test_tool_requires_platforms
+run_test test_tool_rejects_a_flag_with_no_value
+
 printf '\n%d test(s), %d failure(s), %d skipped\n' \
     "$tests_run" "$tests_failed" "$tests_skipped"
 

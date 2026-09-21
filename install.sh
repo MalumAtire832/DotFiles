@@ -129,6 +129,103 @@ detect_platform() {
     esac
 }
 
+# ---------------------------------------------------------------------------
+# The manifest
+#
+# manifest.sh is sourced and contains nothing but `tool` lines. tool() records
+# its arguments into parallel indexed arrays — one array per field, sharing an
+# index — because bash 3.2 has no associative arrays and this script has to run
+# on Apple's /bin/bash.
+# ---------------------------------------------------------------------------
+
+tool_names=()
+tool_platforms=()
+tool_config=()
+tool_home=()
+tool_dnf=()
+tool_brew=()
+tool_cask=()
+tool_post=()
+
+manifest_reset() {
+    tool_names=()
+    tool_platforms=()
+    tool_config=()
+    tool_home=()
+    tool_dnf=()
+    tool_brew=()
+    tool_cask=()
+    tool_post=()
+}
+
+list_contains() {
+    # True when the whole word $1 appears in the space-separated list $2.
+    local needle=$1 word
+    for word in $2; do
+        if [ "$word" = "$needle" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+tool() {
+    # tool <name> --platforms "<ids>" [--config <dir>] [--home "<entries>"]
+    #             [--dnf "<pkgs>"] [--brew "<pkgs>"] [--cask "<casks>"]
+    #             [--post "<command>"]
+    #
+    # Unknown flags are an error rather than being ignored, so a typo in the
+    # manifest surfaces immediately instead of silently dropping a dependency.
+    local name=${1:-}
+    shift || true
+
+    if [ -z "$name" ]; then
+        printf 'manifest: tool needs a name\n' >&2
+        return 1
+    fi
+
+    local platforms='' config='' home='' dnf='' brew='' cask='' post=''
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --platforms|--config|--home|--dnf|--brew|--cask|--post)
+                if [ $# -lt 2 ]; then
+                    printf 'manifest: %s needs a value (tool %s)\n' "$1" "$name" >&2
+                    return 1
+                fi
+                case $1 in
+                    --platforms) platforms=$2 ;;
+                    --config)    config=$2 ;;
+                    --home)      home=$2 ;;
+                    --dnf)       dnf=$2 ;;
+                    --brew)      brew=$2 ;;
+                    --cask)      cask=$2 ;;
+                    --post)      post=$2 ;;
+                esac
+                shift 2
+                ;;
+            *)
+                printf 'manifest: unknown option %s (tool %s)\n' "$1" "$name" >&2
+                return 1
+                ;;
+        esac
+    done
+
+    if [ -z "$platforms" ]; then
+        printf 'manifest: --platforms is required (tool %s)\n' "$name" >&2
+        return 1
+    fi
+
+    tool_names+=("$name")
+    tool_platforms+=("$platforms")
+    tool_config+=("$config")
+    tool_home+=("$home")
+    tool_dnf+=("$dnf")
+    tool_brew+=("$brew")
+    tool_cask+=("$cask")
+    tool_post+=("$post")
+}
+
 main() {
     printf 'not implemented yet\n'
 }
