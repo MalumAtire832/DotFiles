@@ -21,21 +21,26 @@ tests_failed=0
 tests_skipped=0
 skipped_this_test=0
 current_test=""
-sandboxes=()
+
+# One parent directory for the whole run, removed on exit.
+#
+# Tracking sandboxes in an array does not work here: sandbox() is always
+# called as `box=$(sandbox)`, and command substitution runs in a subshell, so
+# an append inside it is lost when that subshell exits. The array would be
+# empty on every run and nothing would ever be cleaned up. Nesting the
+# sandboxes inside one directory removes the need to track them at all.
+run_root=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-test.XXXXXX")
 
 cleanup() {
-    local s
-    for s in ${sandboxes+"${sandboxes[@]}"}; do
-        [ -n "$s" ] && rm -rf -- "$s"
-    done
+    # A kill -9 still leaves run_root behind; no trap can catch that.
+    rm -rf -- "$run_root"
 }
 trap cleanup EXIT
 
 sandbox() {
-    local s
-    s=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-test.XXXXXX")
-    sandboxes+=("$s")
-    printf '%s\n' "$s"
+    # Prints a fresh directory under run_root. Nothing to register: removing
+    # run_root on exit takes every sandbox with it.
+    mktemp -d "$run_root/box.XXXXXX"
 }
 
 fail() {
