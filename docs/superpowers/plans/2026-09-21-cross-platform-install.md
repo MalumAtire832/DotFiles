@@ -1294,6 +1294,58 @@ test_install_packages_skips_the_manager_in_dry_run() {
     assert_eq "$(wc -l < "$box/calls.log" | tr -d ' ')" "0" "dry run invoked nothing"
 }
 
+test_missing_packages_handles_an_empty_list() {
+    # A tool declaring no packages for this platform. Before the guard this
+    # died with "pkgs[@]: unbound variable" — bash 3.2 treats expanding an
+    # empty array under `set -u` as an error, not as nothing.
+    local box out status
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    out=$(PATH="$box/bin:$PATH"; platform=macos; missing_packages "" 2>&1)
+    status=$?
+    assert_ok $status "empty list does not crash"
+    assert_eq "$out" "" "empty list yields nothing"
+}
+
+test_missing_casks_handles_an_empty_list() {
+    local box out status
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    out=$(PATH="$box/bin:$PATH"; platform=macos; missing_casks "" 2>&1)
+    status=$?
+    assert_ok $status "empty cask list does not crash"
+    assert_eq "$out" "" "empty cask list yields nothing"
+}
+
+test_missing_casks_filters_installed_casks() {
+    # Casks are queried separately from formulae. A cask already installed
+    # must not be reinstalled on every run.
+    local box out
+    box=$(sandbox)
+    make_shims "$box" "" "font-one" ""
+    out=$(
+        PATH="$box/bin:$PATH"
+        platform=macos
+        load_brew_cache
+        missing_casks "font-one font-two"
+    )
+    assert_eq "$out" "font-two" "only the uninstalled cask is missing"
+}
+
+test_install_casks_passes_the_cask_flag() {
+    local box
+    box=$(sandbox)
+    make_shims "$box" "" "" ""
+    (
+        PATH="$box/bin:$PATH"
+        platform=macos
+        dry_run=0
+        install_casks "font-one font-two"
+    ) >/dev/null 2>&1
+    assert_contains "$(cat "$box/calls.log")" "install --cask font-one font-two" \
+        "casks installed with --cask in one call"
+}
+
 run_test test_missing_packages_filters_installed_rpms
 run_test test_missing_packages_returns_everything_when_none_installed
 run_test test_missing_packages_is_empty_when_all_installed
@@ -1303,6 +1355,10 @@ run_test test_install_packages_invokes_dnf_once_for_the_whole_set
 run_test test_install_packages_does_nothing_when_the_set_is_empty
 run_test test_install_packages_reports_failure
 run_test test_install_packages_skips_the_manager_in_dry_run
+run_test test_missing_packages_handles_an_empty_list
+run_test test_missing_casks_handles_an_empty_list
+run_test test_missing_casks_filters_installed_casks
+run_test test_install_casks_passes_the_cask_flag
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -1341,8 +1397,25 @@ load_brew_cache() {
 
 missing_packages() {
     # Print the subset of the space-separated list $1 that is not installed.
-    local pkg missing=''
-    for pkg in $1; do
+    #
+    # $1 is split with `read -a` rather than an unquoted `for pkg in $1`. The
+    # latter performs pathname expansion as well as word splitting, so a
+    # package name containing * or ? would expand against files in the
+    # caller's working directory — the same hazard list_contains had. A
+    # subshell with `set -f` would have worked too, but not here: this
+    # function populates the brew cache, and a subshell would discard it.
+    local pkg missing='' pkgs
+
+    # An empty list is ordinary — a tool that declares no packages for this
+    # platform. Returning before the read also avoids expanding an empty array
+    # as "${pkgs[@]}", which in bash 3.2 under `set -u` is an unbound-variable
+    # error that kills the script rather than expanding to nothing.
+    if [ -z "${1// /}" ]; then
+        return 0
+    fi
+
+    read -r -a pkgs <<< "$1"
+    for pkg in "${pkgs[@]}"; do
         case "$platform" in
             fedora)
                 if rpm -q --quiet "$pkg"; then
@@ -1356,23 +1429,40 @@ missing_packages() {
                 fi
                 ;;
         esac
-        missing="$missing $pkg"
+        if [ -z "$missing" ]; then
+            missing=$pkg
+        else
+            missing="$missing $pkg"
+        fi
     done
-    # shellcheck disable=SC2086
-    printf '%s\n' $missing
+
+    # Quoted. `printf '%s\n' $missing` unquoted word-splits and cycles the
+    # format once per word, so two missing packages print on two lines and the
+    # caller reads back a value with a newline in it.
+    printf '%s\n' "$missing"
 }
 
 missing_casks() {
-    local pkg missing=''
+    # As missing_packages, for Homebrew casks. See its comments.
+    local pkg missing='' pkgs
+
+    if [ -z "${1// /}" ]; then
+        return 0
+    fi
+
     load_brew_cache
-    for pkg in $1; do
+    read -r -a pkgs <<< "$1"
+    for pkg in "${pkgs[@]}"; do
         if list_contains "$pkg" "$brew_casks"; then
             continue
         fi
-        missing="$missing $pkg"
+        if [ -z "$missing" ]; then
+            missing=$pkg
+        else
+            missing="$missing $pkg"
+        fi
     done
-    # shellcheck disable=SC2086
-    printf '%s\n' $missing
+    printf '%s\n' "$missing"
 }
 
 install_packages() {
@@ -1387,14 +1477,14 @@ install_packages() {
         return 0
     fi
 
+    local pkgs
+    read -r -a pkgs <<< "$1"
     case "$platform" in
         fedora)
-            # shellcheck disable=SC2086
-            sudo dnf install -y $1
+            sudo dnf install -y "${pkgs[@]}"
             ;;
         macos)
-            # shellcheck disable=SC2086
-            brew install $1
+            brew install "${pkgs[@]}"
             ;;
         *)
             printf 'no package manager for platform %s\n' "$platform" >&2
@@ -1411,8 +1501,9 @@ install_casks() {
         printf '  would install cask %s\n' "$1"
         return 0
     fi
-    # shellcheck disable=SC2086
-    brew install --cask $1
+    local pkgs
+    read -r -a pkgs <<< "$1"
+    brew install --cask "${pkgs[@]}"
 }
 ```
 
@@ -1421,7 +1512,7 @@ Note: `${1// /}` is bash pattern substitution, available in bash 3.2. It collaps
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `47 test(s), 0 failure(s), 1 skipped`.
+Expected: `51 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Commit**
 
@@ -1806,7 +1897,7 @@ main() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `56 test(s), 0 failure(s), 1 skipped`.
+Expected: `60 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 5: Verify syntax**
 
@@ -1916,7 +2007,7 @@ Expected: PASS. If any fail, fix `install.sh` — the behaviour is meant to exis
 - [ ] **Step 3: Run the whole suite**
 
 Run: `tests/install_test.sh`
-Expected: `61 test(s), 0 failure(s), 1 skipped`.
+Expected: `65 test(s), 0 failure(s), 1 skipped`.
 
 - [ ] **Step 4: Commit**
 
@@ -2024,7 +2115,7 @@ Expected: `Platform: macos`, no `unassigned:` lines (every one of the eight `con
 - [ ] **Step 4: Run the suite**
 
 Run: `tests/install_test.sh`
-Expected: `61 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
+Expected: `65 test(s), 0 failure(s), 1 skipped`. The tests use their own fake manifest, so the real one cannot affect them.
 
 - [ ] **Step 5: Commit**
 
@@ -2385,7 +2476,7 @@ silently on a machine the author is probably not sitting at."
 - [ ] **Step 1: Run the full suite**
 
 Run: `tests/install_test.sh`
-Expected: `61 test(s), 0 failure(s), 1 skipped`, exit 0.
+Expected: `65 test(s), 0 failure(s), 1 skipped`, exit 0.
 
 - [ ] **Step 2: Syntax-check everything**
 
