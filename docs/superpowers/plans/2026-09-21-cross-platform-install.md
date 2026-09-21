@@ -173,12 +173,65 @@ test_resolve_handles_a_nonexistent_leaf() {
     assert_eq "$(resolve "$box/missing")" "$(cd "$box" && pwd -P)/missing" "missing leaf"
 }
 
+test_resolve_follows_a_symlink_to_a_file() {
+    # The case link() actually hits for home/.zshrc and home/.zprofile. A
+    # symlink to a file must resolve to its target, not to its own path.
+    local box
+    box=$(sandbox)
+    mkdir -p "$box/repo"
+    : > "$box/repo/.zshrc"
+    ln -s -- "$box/repo/.zshrc" "$box/link"
+    assert_eq "$(resolve "$box/link")" "$(resolve "$box/repo/.zshrc")" "symlink to file"
+}
+
+test_resolve_follows_a_relative_symlink() {
+    local box
+    box=$(sandbox)
+    mkdir -p "$box/repo"
+    : > "$box/repo/.zshrc"
+    ln -s -- "repo/.zshrc" "$box/link"
+    assert_eq "$(resolve "$box/link")" "$(resolve "$box/repo/.zshrc")" "relative symlink"
+}
+
+test_resolve_fails_on_a_missing_parent() {
+    # readlink -f errors here. Returning a fabricated path with status 0 would
+    # let a wrong value flow into a backup-and-relink decision.
+    local box out status
+    box=$(sandbox)
+    out=$(resolve "$box/absent/leaf" 2>/dev/null)
+    status=$?
+    assert_fails $status "missing parent reports failure"
+    assert_eq "$out" "" "missing parent prints nothing"
+}
+
+test_resolve_detects_a_symlink_loop() {
+    local box status
+    box=$(sandbox)
+    ln -s -- "$box/b" "$box/a"
+    ln -s -- "$box/a" "$box/b"
+    resolve "$box/a" >/dev/null 2>&1
+    status=$?
+    assert_fails $status "symlink loop reports failure"
+}
+
 run_test test_resolve_directory_is_absolute_and_physical
 run_test test_resolve_follows_a_symlinked_directory
 run_test test_resolve_handles_a_plain_file
 run_test test_resolve_handles_a_nonexistent_leaf
+run_test test_resolve_follows_a_symlink_to_a_file
+run_test test_resolve_follows_a_relative_symlink
+run_test test_resolve_fails_on_a_missing_parent
+run_test test_resolve_detects_a_symlink_loop
 
 printf '\n%d test(s), %d failure(s)\n' "$tests_run" "$tests_failed"
+
+# A mistyped filter would otherwise print "0 test(s), 0 failure(s)" and exit 0,
+# which reads exactly like a pass.
+if [ -n "$filter" ] && [ "$tests_run" = 0 ]; then
+    printf 'No test matched filter [%s]\n' "$filter" >&2
+    exit 1
+fi
+
 [ "$tests_failed" = 0 ]
 ```
 
@@ -230,13 +283,39 @@ stamp=$(date +%Y%m%d-%H%M%S)
 
 resolve() {
     # Print the absolute, symlink-free path of $1. Stands in for `readlink -f`.
-    # A nonexistent leaf is fine as long as its parent directory exists.
-    if [ -d "$1" ]; then
-        (cd -- "$1" && pwd -P)
+    #
+    # The symlink chain is walked explicitly. Testing `-d` alone is not enough:
+    # `-d` follows a symlink to a directory, but a symlink to a *file* would
+    # fall through to the leaf branch, which resolves only the containing
+    # directory and reattaches the link's own name — returning the link's path
+    # rather than its target. home/.zshrc and home/.zprofile are exactly that
+    # case, so link() would judge them wrong on every run and relink them.
+    #
+    # Plain `readlink` with no flags is POSIX and present on both userlands;
+    # only `readlink -f` is the GNU-ism being avoided.
+    local path=$1 target parent hops=0
+
+    while [ -L "$path" ]; do
+        hops=$((hops + 1))
+        if [ "$hops" -gt 40 ]; then
+            printf 'resolve: too many levels of symbolic links: %s\n' "$1" >&2
+            return 1
+        fi
+        target=$(readlink -- "$path") || return 1
+        case "$target" in
+            /*) path=$target ;;
+            *)  path="$(dirname -- "$path")/$target" ;;
+        esac
+    done
+
+    if [ -d "$path" ]; then
+        (cd -- "$path" && pwd -P) || return 1
     else
-        printf '%s/%s\n' \
-            "$(cd -- "$(dirname -- "$1")" && pwd -P)" \
-            "$(basename -- "$1")"
+        # Assigning the substitution separately so a failing cd is caught. As
+        # an argument to printf its status is discarded and set -e never fires,
+        # which would return a fabricated path with status 0.
+        parent=$(cd -- "$(dirname -- "$path")" && pwd -P) || return 1
+        printf '%s/%s\n' "$parent" "$(basename -- "$path")"
     fi
 }
 
@@ -252,7 +331,7 @@ fi
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `4 test(s), 0 failure(s)`, exit 0.
+Expected: `8 test(s), 0 failure(s)`, exit 0.
 
 - [ ] **Step 5: Verify the script still parses and is not executable-broken**
 
@@ -375,7 +454,7 @@ detect_platform() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `8 test(s), 0 failure(s)` on macOS (one of the platform tests reports `skip`).
+Expected: `12 test(s), 0 failure(s)` on macOS (one of the platform tests reports `skip`).
 
 - [ ] **Step 5: Commit**
 
@@ -609,7 +688,7 @@ tool() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `18 test(s), 0 failure(s)`.
+Expected: `22 test(s), 0 failure(s)`.
 
 - [ ] **Step 5: Commit**
 
@@ -712,12 +791,29 @@ test_link_creates_missing_parent_directories() {
     fi
 }
 
+test_link_reports_ok_for_an_existing_file_link() {
+    # home/.zshrc and home/.zprofile are files, not directories. This is the
+    # case a resolve() that does not dereference symlinks gets wrong, silently
+    # backing up and relinking a correct link on every run.
+    local box out
+    box=$(sandbox)
+    mkdir -p "$box/repo" "$box/home"
+    : > "$box/repo/.zshrc"
+    link "$box/repo/.zshrc" "$box/home/.zshrc" >/dev/null
+    out=$(link "$box/repo/.zshrc" "$box/home/.zshrc")
+    assert_contains "$out" "ok" "file link reported ok on second run"
+    if ls -d "$box/home/.zshrc.backup-"* >/dev/null 2>&1; then
+        fail "a correct file link was backed up and relinked"
+    fi
+}
+
 run_test test_link_creates_an_absolute_symlink
 run_test test_link_reports_ok_for_an_existing_correct_link
 run_test test_link_leaves_an_existing_relative_link_alone
 run_test test_link_backs_up_a_real_directory_in_the_way
 run_test test_link_replaces_a_symlink_pointing_somewhere_else
 run_test test_link_creates_missing_parent_directories
+run_test test_link_reports_ok_for_an_existing_file_link
 ```
 
 - [ ] **Step 2: Run the tests to verify they fail**
@@ -771,7 +867,7 @@ link() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `24 test(s), 0 failure(s)`.
+Expected: `29 test(s), 0 failure(s)`.
 
 - [ ] **Step 5: Commit**
 
@@ -1085,7 +1181,7 @@ Note: `${1// /}` is bash pattern substitution, available in bash 3.2. It collaps
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `33 test(s), 0 failure(s)`.
+Expected: `38 test(s), 0 failure(s)`.
 
 - [ ] **Step 5: Commit**
 
@@ -1470,7 +1566,7 @@ main() {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `tests/install_test.sh`
-Expected: `42 test(s), 0 failure(s)`.
+Expected: `47 test(s), 0 failure(s)`.
 
 - [ ] **Step 5: Verify syntax**
 
@@ -1580,7 +1676,7 @@ Expected: PASS. If any fail, fix `install.sh` — the behaviour is meant to exis
 - [ ] **Step 3: Run the whole suite**
 
 Run: `tests/install_test.sh`
-Expected: `47 test(s), 0 failure(s)`.
+Expected: `52 test(s), 0 failure(s)`.
 
 - [ ] **Step 4: Commit**
 
@@ -1688,7 +1784,7 @@ Expected: `Platform: macos`, no `unassigned:` lines (every one of the eight `con
 - [ ] **Step 4: Run the suite**
 
 Run: `tests/install_test.sh`
-Expected: `47 test(s), 0 failure(s)`. The tests use their own fake manifest, so the real one cannot affect them.
+Expected: `52 test(s), 0 failure(s)`. The tests use their own fake manifest, so the real one cannot affect them.
 
 - [ ] **Step 5: Commit**
 
@@ -2049,7 +2145,7 @@ silently on a machine the author is probably not sitting at."
 - [ ] **Step 1: Run the full suite**
 
 Run: `tests/install_test.sh`
-Expected: `47 test(s), 0 failure(s)`, exit 0.
+Expected: `52 test(s), 0 failure(s)`, exit 0.
 
 - [ ] **Step 2: Syntax-check everything**
 
