@@ -7,6 +7,12 @@ layout {
             pane {
                 name "File Explorer"
                 command "broot"
+                // broot's filesystem watcher is a runtime toggle (alt-w),
+                // off by default, so files created by another process (git,
+                // an editor, opener.sh) don't appear until a manual F5. -c
+                // runs a startup command, so :toggle_watch turns it on for
+                // every "ide" session without changing broot's own config.
+                args "-c" ":toggle_watch"
                 size "15%"
             }
             pane {

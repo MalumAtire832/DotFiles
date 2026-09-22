@@ -7,6 +7,10 @@ layout {
             pane {
                 name "File Explorer"
                 command "broot"
+                // See config/zellij/layouts/ide.kdl: broot's file watcher
+                // is off by default, so new files need :toggle_watch to
+                // show up without a manual refresh.
+                args "-c" ":toggle_watch"
                 size "15%"
             }
             pane size="85%" {
