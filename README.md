@@ -235,9 +235,16 @@ to.
 
 `config/zellij/layouts/ide.kdl` is the workspace this was built for: a
 `Primary` tab splitting broot at 15% against helix at 85%, and a
-`Version Control` tab running lazygit. Start it with `zellij --layout ide`.
-Setting `default_layout "ide"` in `config.kdl` would make it the default for
-a bare `zellij`; it is deliberately not set.
+`Version Control` tab running lazygit. Setting `default_layout "ide"` in
+`config.kdl` would make it the default for a bare `zellij`; it is
+deliberately not set.
+
+`ide()` in `.zshrc` starts it, passing `--default-cwd` so the panes open
+where the shell was, not at `$HOME`. A language name as its first argument
+switches to a per-language variant instead: `ide dotnet` starts
+`config/zellij/layouts/ide-dotnet.kdl`, the same layout with a plain
+shell pane added below helix for running `dotnet` commands alongside the
+editor. Bare `ide` still starts `ide.kdl`.
 
 ## Adding a tool
 

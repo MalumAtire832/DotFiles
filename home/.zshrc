@@ -135,7 +135,7 @@ br() {
 }
 
 # ---------------------------------------------------------------------------
-# The "ide" zellij layout (config/zellij/layouts/ide.kdl)
+# The "ide" zellij layouts (config/zellij/layouts/ide.kdl, ide-<language>.kdl)
 #
 # Its broot and helix panes set no cwd of their own, so on a fresh session
 # they fall back to zellij's own default, which is $HOME rather than the
@@ -143,9 +143,16 @@ br() {
 # `zellij action dump-layout`: an unset session cwd resolves to $HOME, not
 # the invoking shell's $PWD). `options --default-cwd` overrides that for
 # this invocation only, so both panes start where you actually are.
+#
+# An optional first argument names a language, selecting the ide-<language>
+# layout (e.g. `ide dotnet` -> ide-dotnet.kdl) instead of the plain one.
 # ---------------------------------------------------------------------------
 ide() {
-    zellij --layout ide options --default-cwd "$PWD"
+    local layout="ide"
+    if [ -n "$1" ]; then
+        layout="ide-$1"
+    fi
+    zellij --layout "$layout" options --default-cwd "$PWD"
 }
 
 # Compilation flags

@@ -1,0 +1,40 @@
+layout {
+    tab name="Primary" {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane {
+                name "File Explorer"
+                command "broot"
+                size "15%"
+            }
+            pane size="85%" {
+                pane {
+                    name "Main"
+                    command "hx"
+                    size "80%"
+                }
+                pane {
+                    name "Console"
+                    size "20%"
+                }
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+    tab name="Version Control" {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
+        pane {
+            name "LayzGit"
+            command "lazygit"
+        }
+        pane size=1 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+}
