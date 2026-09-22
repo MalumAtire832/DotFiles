@@ -137,6 +137,20 @@ n() {
     fi
 }
 
+# ---------------------------------------------------------------------------
+# The "ide" zellij layout (config/zellij/layouts/ide.kdl)
+#
+# Its nnn and helix panes set no cwd of their own, so on a fresh session
+# they fall back to zellij's own default, which is $HOME rather than the
+# directory this was run from (confirmed by inspecting a running session's
+# `zellij action dump-layout`: an unset session cwd resolves to $HOME, not
+# the invoking shell's $PWD). `options --default-cwd` overrides that for
+# this invocation only, so both panes start where you actually are.
+# ---------------------------------------------------------------------------
+ide() {
+    zellij --layout ide options --default-cwd "$PWD"
+}
+
 # Compilation flags
 # export ARCHFLAGS="-arch $(uname -m)"
 
