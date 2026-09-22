@@ -13,15 +13,11 @@
 /config/sway/.claude/
 /config/gtk-3.0/bookmarks
 
-# nnn keeps its session, mount and bookmark state in its configuration
-# directory, which is this one. Only the opener is configuration; the
-# bookmarks are symlinks to paths that exist on this machine alone, the same
-# reason the GTK ones above are excluded. Plugins are left tracked, since a
-# plugin dropped in there is something worth keeping.
-/config/nnn/sessions/
-/config/nnn/mounts/
-/config/nnn/bookmarks/
-/config/nnn/.selection
+# broot's install marker and a symlink to its own shell-integration script,
+# both in ~/.local/share/broot -- written the first time broot runs directly
+# (as the ide layout's pane command does) rather than through the br()
+# function in .zshrc. Harmless, machine-specific, and not configuration.
+/config/broot/launcher/
 
 # Leftover alternates.
 /config/cava/config1

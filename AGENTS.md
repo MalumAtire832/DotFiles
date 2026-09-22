@@ -26,7 +26,7 @@ Consequences:
 
 ```
 config/        -> symlinked to ~/.config/<name>   (whole directories)
-  btop cava gtk-3.0 gtk-4.0 helix kitty mako nnn rofi sway waybar zellij
+  broot btop cava gtk-3.0 gtk-4.0 helix kitty mako rofi sway waybar zellij
 home/          -> symlinked to ~/<name>
   .zshrc .zprofile
 docs/          palette.svg, referenced by README
@@ -121,6 +121,7 @@ single source of truth, because none of these tools can share one:
 | cava | `config/cava/config` |
 | mako | `config/mako/config` |
 | zellij | `config/zellij/config.kdl`, in a `themes` block rather than its own file |
+| broot | `config/broot/oxocarbon.hjson`, imported into `conf.hjson` |
 | GTK 3 | `config/gtk-3.0/oxocarbon.css` |
 | GTK 4 | `config/gtk-4.0/oxocarbon.css` |
 
@@ -139,23 +140,33 @@ The two GTK files are an exception only in shape, not in rule: `gtk.css` holds
 structural rules and `oxocarbon.css` holds the colours, so a rule in `gtk.css`
 names `@theme_header_bg` and never a hex code.
 
-### The nnn opener is coupled to helix
+### The broot opener is coupled to helix
 
-`config/nnn/opener.sh` gives each file nnn opens its own helix process,
+`config/broot/opener.sh` gives each file broot opens its own helix process,
 rather than a buffer in a shared one, and merges those panes into a single
 zellij stack next to the file tree. Three things have to agree:
 
 | File | What it states |
 |------|----------------|
-| `home/.zshrc` | `NNN_OPENER`, pointing at `~/.config/nnn/opener.sh`, and `EDITOR` |
-| `config/nnn/opener.sh` | that a file's editor is whichever pane's `pane_command` is exactly `hx <path>` |
-| `config/nnn/opener.sh` | the mime allowlist deciding what is text and what goes to `xdg-open` |
+| `config/broot/verbs.hjson` | the `edit` verb, bound to `enter`, `apply_to: text_file`, pointing at `~/.config/broot/opener.sh` |
+| `home/.zshrc` | `EDITOR`, which `opener.sh` hands new helix panes and nothing else needs |
+| `config/broot/opener.sh` | that a file's editor is whichever pane's `pane_command` is exactly `hx <path>` |
 
-All three fail soft. A wrong `NNN_OPENER` falls back to nnn's own opener, and
-without `jq` the lookup comes back empty: a file already open gets a second
-pane instead of being focused, and a newly opened one is never folded into
-the others' stack. Wrong, but not destructive, and none of it produces an
-error.
+Unlike the old `NNN_OPENER` string, broot's `external` field is not shell-
+expanded: a literal `$HOME` in `verbs.hjson` fails with "Unable to launch $",
+not a resolved path. Use `~` instead — broot expands that one itself, the
+same way its own default `special_paths` example does.
+
+There's no mime-type check in `opener.sh` any more, unlike the old nnn one.
+`apply_to: text_file` in the verb already restricts it to files broot itself
+classifies as text; anything else never reaches this verb and falls through
+to broot's own default (`xdg-open`), the same end result the mime check used
+to produce by hand.
+
+Without `jq`, the pane lookup comes back empty: a file already open gets a
+second pane instead of being focused, and a newly opened one is never folded
+into the others' stack. Wrong, but not destructive, and none of it produces
+an error.
 
 The lookup matches on the *running command*, deliberately. It used to match a
 pane named `editor`, which worked only for panes the opener had created
@@ -169,9 +180,26 @@ A newly opened file is spawned as its own `hx <path>` pane and, if other
 files are already open, folded into their stack with `zellij action
 stack-panes` — merging by pane id, regardless of where the new pane first
 landed, rather than by direction or focus, both of which depend on whatever
-pane nnn happens to be running in. The tradeoff against the old shared-pane
+pane broot happens to be running in. The tradeoff against the old shared-pane
 design is one language server per open file instead of one for the whole
 project.
+
+`opener.sh` resolves the `zellij` binary itself rather than calling it by
+bare name (`zellij=$(command -v zellij || echo "$HOME/.local/bin/zellij")`).
+zellij is installed to `~/.local/bin`, which is only on `PATH` inside an
+interactive shell that has sourced `.zshrc` — a pane zellij itself spawns
+(this one) starts with a bare default `PATH` regardless of what the
+invoking shell had, so a bare `zellij action ...` inside a spawned pane
+fails with "command not found" even though it's how the pane got started.
+Any future script that calls back into `zellij` from inside a spawned pane
+needs the same treatment.
+
+broot's own shell-integration installer (the `br()` prompt) also runs the
+first time broot is launched directly instead of through `br`, which is
+exactly how the `ide` layout starts it — so it fires once per machine and
+writes an install marker plus a `launcher/` symlink into `~/.config/broot`.
+That's tool state, not configuration, and is `.gitignore`d the same way
+nnn's session/mount/bookmark state used to be.
 
 ### GTK settings are stated in three places
 
@@ -235,7 +263,7 @@ Run the relevant check before claiming a change works. All are cheap.
 | zsh config | `timeout 20 zsh -i -c 'echo ok'` |
 | waybar config | `.jsonc` allows comments, so use waybar itself, not `jq` |
 | GTK palette | ask GTK what it *paints*, not what it defines — see below |
-| nnn opener | `sh -n config/nnn/opener.sh`, then open two files from nnn and check each gets its own pane, both merged into one stack, and that reselecting one focuses it rather than duplicating it |
+| broot opener | `sh -n config/broot/opener.sh`, then open two files from broot and check each gets its own pane, both merged into one stack, and that reselecting one focuses it rather than duplicating it |
 | zellij config | `zellij setup --check` — prints `[CONFIG FILE]: Well defined.` when the KDL parses |
 | zellij layout | no validator; `zellij --layout <name>` in a throwaway session is the test |
 | symlink integrity | `./install.sh` — reports `ok` for all 14 and changes nothing |

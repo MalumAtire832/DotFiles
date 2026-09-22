@@ -1,0 +1,94 @@
+###############################################################
+# Oxocarbon (IBM Carbon dark) for broot
+# Palette: https://github.com/nyoom-engineering/oxocarbon
+# Canonical hex values are listed in README.md; broot's skin format
+# only accepts rgb()/gray()/ansi() functions or named colors, so the
+# hex values are inlined here as rgb().
+#
+# A skin entry value is "<active panel> / <inactive panel>"; the
+# inactive half is omitted where it doesn't matter.
+###############################################################
+skin: {
+    default: rgb(221,225,230) rgb(22,22,22) / rgb(82,82,82) rgb(15,15,15)
+    tree: rgb(57,57,57) None
+    parent: rgb(82,82,82) None
+    file: rgb(221,225,230) None / rgb(82,82,82) None
+    directory: rgb(51,177,255) None bold / rgb(51,177,255) None
+    exe: rgb(66,190,101) None
+    link: rgb(61,219,217) None
+    pruning: rgb(82,82,82) None Italic
+    perm__: rgb(82,82,82) None
+    perm_r: rgb(210,161,6) None
+    perm_w: rgb(238,83,150) None
+    perm_x: rgb(66,190,101) None
+    owner: rgb(190,149,255) None
+    group: rgb(255,126,182) None
+    count: rgb(190,149,255) rgb(38,38,38)
+    dates: rgb(130,207,255) None
+    sparse: rgb(241,194,27) None
+    content_extract: rgb(8,189,186) None
+    content_match: rgb(66,190,101) None
+    device_id_major: rgb(190,149,255) None
+    device_id_sep: rgb(82,82,82) None
+    device_id_minor: rgb(190,149,255) None
+    git_branch: rgb(190,149,255) None
+    git_insertions: rgb(66,190,101) None
+    git_deletions: rgb(238,83,150) None
+    git_status_current: rgb(82,82,82) None
+    git_status_modified: rgb(210,161,6) None
+    git_status_staged: rgb(66,190,101) None
+    git_status_new: rgb(66,190,101) None bold
+    git_status_ignored: rgb(82,82,82) None
+    git_status_conflicted: rgb(238,83,150) None
+    git_status_other: rgb(238,83,150) None
+    selected_line: None rgb(57,57,57) / None rgb(38,38,38)
+    char_match: rgb(241,194,27) None bold
+    file_error: rgb(238,83,150) None
+    flag_label: rgb(82,82,82) rgb(38,38,38)
+    flag_value: rgb(51,177,255) rgb(38,38,38) bold
+    input: rgb(242,244,248) rgb(38,38,38) / rgb(221,225,230) None
+    status_error: rgb(22,22,22) rgb(238,83,150)
+    status_job: rgb(241,194,27) rgb(57,57,57)
+    status_normal: rgb(221,225,230) rgb(38,38,38) / rgb(82,82,82) rgb(38,38,38)
+    status_italic: rgb(130,207,255) rgb(38,38,38) / rgb(82,82,82) rgb(38,38,38)
+    status_bold: rgb(242,244,248) rgb(38,38,38) bold / rgb(82,82,82) rgb(38,38,38)
+    status_code: rgb(190,149,255) rgb(38,38,38) / rgb(82,82,82) rgb(38,38,38)
+    status_ellipsis: rgb(82,82,82) rgb(22,22,22) / rgb(82,82,82) rgb(38,38,38)
+    purpose_normal: rgb(221,225,230) rgb(38,38,38)
+    purpose_italic: rgb(130,207,255) rgb(38,38,38)
+    purpose_bold: rgb(242,244,248) rgb(38,38,38) bold
+    purpose_ellipsis: rgb(221,225,230) rgb(38,38,38)
+    scrollbar_track: rgb(38,38,38) None
+    scrollbar_thumb: rgb(82,82,82) None / rgb(57,57,57) None
+    help_paragraph: rgb(221,225,230) None
+    help_bold: rgb(51,177,255) None bold
+    help_italic: rgb(130,207,255) None
+    help_code: rgb(221,225,230) rgb(38,38,38)
+    help_headers: rgb(51,177,255) None
+    help_table_border: rgb(57,57,57) None
+    preview: rgb(221,225,230) rgb(15,15,15) / rgb(82,82,82) rgb(15,15,15)
+    preview_title: rgb(242,244,248) rgb(38,38,38) / rgb(221,225,230) rgb(38,38,38)
+    preview_line_number: rgb(82,82,82) rgb(38,38,38)
+    preview_separator: rgb(57,57,57) None
+    preview_match: None rgb(8,189,186)
+    diff_line_number: rgb(82,82,82) rgb(38,38,38)
+    diff_added: rgb(66,190,101) rgb(38,38,38)
+    diff_removed: rgb(238,83,150) rgb(38,38,38)
+    hex_null: rgb(57,57,57) None
+    hex_ascii_graphic: rgb(221,225,230) None
+    hex_ascii_whitespace: rgb(210,161,6) None
+    hex_ascii_other: rgb(241,194,27) None
+    hex_non_ascii: rgb(238,83,150) None
+    staging_area_title: rgb(242,244,248) rgb(38,38,38) / rgb(221,225,230) rgb(57,57,57)
+    mode_command_mark: rgb(82,82,82) rgb(51,177,255) bold
+    good_to_bad_0: rgb(66,190,101)
+    good_to_bad_1: rgb(66,190,101)
+    good_to_bad_2: rgb(8,189,186)
+    good_to_bad_3: rgb(8,189,186)
+    good_to_bad_4: rgb(61,219,217)
+    good_to_bad_5: rgb(210,161,6)
+    good_to_bad_6: rgb(241,194,27)
+    good_to_bad_7: rgb(238,83,150)
+    good_to_bad_8: rgb(238,83,150)
+    good_to_bad_9: rgb(238,83,150)
+}

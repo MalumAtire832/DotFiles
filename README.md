@@ -131,7 +131,7 @@ accident. See [TODO](#todo).
 
 | Path | Links to | Contents |
 |------|----------|----------|
-| `config/` | `~/.config/<name>` | `btop` `cava` `gtk-3.0` `gtk-4.0` `helix` `kitty` `mako` `nnn` `rofi` `sway` `waybar` `zellij` |
+| `config/` | `~/.config/<name>` | `broot` `btop` `cava` `gtk-3.0` `gtk-4.0` `helix` `kitty` `mako` `rofi` `sway` `waybar` `zellij` |
 | `home/` | `~/<name>` | `.zshrc` `.zprofile` |
 
 zsh reads from `$HOME` rather than `~/.config`, which is why it sits in
@@ -165,11 +165,11 @@ Beyond the ten applications above:
 | `playerctl`, `pactl` | media keys, waybar's mpris and audio modules |
 | `light` | brightness keys |
 | `upower` | wireless peripheral battery levels |
-| `jq`, `awk` | waybar scripts, and the nnn opener's pane lookup |
+| `jq`, `awk` | waybar scripts, and the broot opener's pane lookup |
 | `bluetoothctl` | device group in waybar |
 | `rbenv` | zsh startup, via `.zprofile` |
 | `oh-my-zsh` | the shell; `home/.zshrc` is its config file |
-| `nnn`, `zellij` | the file explorer; see [Browsing files](#browsing-files) |
+| `broot`, `zellij` | the file explorer; see [Browsing files](#browsing-files) |
 | `lazygit` | the second tab of the `ide` zellij layout |
 | JetBrains Mono Nerd Font, Iosevka Nerd Font, Roboto | see [Fonts](#fonts) |
 
@@ -202,36 +202,39 @@ over the top of it.
 
 ## Browsing files
 
-`nnn` is the file explorer, and inside `zellij` it behaves like the file tree
-in an IDE: pick a file and it opens as a tab in one editor, rather than
-launching a second editor.
+`broot` is the file explorer, and inside `zellij` it behaves like the file
+tree in an IDE: an expandable tree next to the editor, where picking a text
+file opens it in its own helix pane and folds that pane into a stack next to
+the tree, rather than leaving panes scattered wherever they first appeared.
 
-`config/nnn/opener.sh` does this. nnn hands it every file that is opened, and
-it sorts them by what they are:
+`config/broot/verbs.hjson` rebinds Enter, for text files, to
+`config/broot/opener.sh` instead of broot's stock `$EDITOR` verb. broot
+already sorts files by type before the verb ever runs:
 
-- Text, inside zellij, with helix already running — the path is written into
-  that pane's command line as `:open`, so the file arrives as a new buffer.
-  Helix's bufferline is the tab strip.
-- Text, inside zellij, with no helix anywhere — a pane is created running
-  `hx`, and the next file opened joins it.
-- Anything else, and everything outside zellij — `xdg-open`, so images and
-  PDFs still go to the applications that handle them.
+- A recognized text file — `opener.sh` runs.
+- Anything else, and everything outside zellij — broot's own default
+  (`xdg-open`), so images and PDFs still go to the applications that handle
+  them.
 
-The editor is found by asking zellij which pane is *running* helix, largest
-first, so there is no state file to go stale and no name to keep in sync. An
-hx you started yourself — from a zellij layout, or by hand in a split — is
-adopted exactly like one the opener started. Largest wins so that a stray hx
-in a corner cannot capture the file.
+`opener.sh` then sorts by whether the file is already open:
 
-Helix reads its configuration once at startup, so an instance that was
-already running when `bufferline` was set will not show the tab strip until
-you run `:config-reload` in it.
+- Already open in a helix pane — that pane is focused, not reopened.
+- Not open anywhere — a new `hx <path>` pane is created and, if other files
+  are already open, folded into their stack.
 
-Quitting nnn leaves the shell in the directory you ended up in, via the `n`
-wrapper in `.zshrc`. Use `n`, not `nnn`, for that to work.
+The lookup asks zellij which panes are *running* helix, matching on the
+running command rather than a remembered pane id, so an hx you started
+yourself — from a zellij layout, or by hand in a split — is adopted exactly
+like one the opener started.
+
+Quitting broot leaves the shell in the directory you ended up in, via the
+`br()` function in `.zshrc` — but only when you start it with `br`, not bare
+`broot`; the `ide` layout's explorer pane uses plain `broot` because that pane
+isn't an interactive shell, so there's nothing for `br()` to hand a `cd` back
+to.
 
 `config/zellij/layouts/ide.kdl` is the workspace this was built for: a
-`Primary` tab splitting nnn at 15% against helix at 85%, and a
+`Primary` tab splitting broot at 15% against helix at 85%, and a
 `Version Control` tab running lazygit. Start it with `zellij --layout ide`.
 Setting `default_layout "ide"` in `config.kdl` would make it the default for
 a bare `zellij`; it is deliberately not set.
@@ -264,8 +267,8 @@ a 270-megapixel progressive JPEG at every startup.
 - `config/zellij/config.kdl` is 24 KB, nearly all of it upstream's commented
   defaults. Only the `theme` line and the `themes` block are actually ours.
   Worth pruning to the settings that differ.
-- There is no key binding that summons nnn; the layout is the only route to
-  it. A binding that opens nnn in a floating pane would finish the job.
+- There is no key binding that summons broot; the layout is the only route to
+  it. A binding that opens broot in a floating pane would finish the job.
 - GTK 2 is not configured here. `~/.gtkrc-2.0` is written by LXAppearance,
   sits outside this repository and names a theme installed in `~/.themes`.
   Almost nothing is GTK 2 any more, so it is left alone — but if that theme is

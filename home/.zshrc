@@ -99,48 +99,45 @@ source $ZSH/oh-my-zsh.sh
 # fi
 
 # ---------------------------------------------------------------------------
-# nnn as the file explorer
+# broot as the file explorer
 #
-# NNN_OPENER sends every file nnn opens through config/nnn/opener.sh, which
-# inside zellij hands text to one long-lived helix pane as a new buffer and
-# everything else to xdg-open. Helix's bufferline is the tab strip for that
-# pane, so this behaves like a file tree beside a tabbed editor.
+# The "edit" verb in config/broot/verbs.hjson sends every text file broot
+# opens through config/broot/opener.sh, which inside zellij gives it its own
+# helix pane and folds it into a stack next to the tree. Non-text files fall
+# through to broot's own default (xdg-open).
 #
 # EDITOR is set here rather than in the block above because the opener names
-# `hx` directly; this is what nnn's own `e` key and everything else fall back
-# to. Re-enabling the SSH conditional above means moving these two lines
-# below it, or the conditional will have no effect.
+# `hx` directly; this is what the verb's $EDITOR fallback and everything else
+# fall back to. Re-enabling the SSH conditional above means moving these two
+# lines below it, or the conditional will have no effect.
 #
-# NNN_TMPFILE makes nnn always write its last directory on quit; the wrapper
-# sources that file so the shell follows nnn out. It lives in the runtime
-# directory rather than the documented ~/.config/nnn/.lastd because that
-# directory is a symlink into this repository, and nnn would be dropping a
-# scratch file into the working tree on every quit.
+# br() is broot's own recommended shell integration, not our own script: `cd`
+# run inside broot has no effect on this shell, so broot writes the command
+# it wants run (usually a cd to wherever you quit) to a temp file, and this
+# function evals it after broot exits. That's what makes quitting broot leave
+# the shell in the last directory, the way quitting nnn used to.
 # ---------------------------------------------------------------------------
 export EDITOR=hx
 export VISUAL=$EDITOR
-export NNN_OPENER="$HOME/.config/nnn/opener.sh"
 
-n() {
-    # nnn spawns a shell with ^], and starting nnn again from it leaves two
-    # instances fighting over the same terminal.
-    if [ "${NNNLVL:-0}" -ge 1 ]; then
-        print -u2 "nnn is already running"
-        return 1
-    fi
-
-    export NNN_TMPFILE="${XDG_RUNTIME_DIR:-/tmp}/nnn.lastd"
-    nnn "$@"
-    if [ -f "$NNN_TMPFILE" ]; then
-        . "$NNN_TMPFILE"
-        rm -f -- "$NNN_TMPFILE"
+br() {
+    local cmd cmd_file
+    cmd_file=$(mktemp)
+    if broot --outcmd "$cmd_file" "$@"; then
+        cmd=$(<"$cmd_file")
+        command rm -f "$cmd_file"
+        eval "$cmd"
+    else
+        local code=$?
+        command rm -f "$cmd_file"
+        return "$code"
     fi
 }
 
 # ---------------------------------------------------------------------------
 # The "ide" zellij layout (config/zellij/layouts/ide.kdl)
 #
-# Its nnn and helix panes set no cwd of their own, so on a fresh session
+# Its broot and helix panes set no cwd of their own, so on a fresh session
 # they fall back to zellij's own default, which is $HOME rather than the
 # directory this was run from (confirmed by inspecting a running session's
 # `zellij action dump-layout`: an unset session cwd resolves to $HOME, not

@@ -6,7 +6,7 @@ layout {
         pane split_direction="vertical" {        
             pane {
                 name "File Explorer"
-                command "nnn"
+                command "broot"
                 size "15%"
             }
             pane {

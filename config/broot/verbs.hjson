@@ -1,0 +1,21 @@
+###############################################################
+# Verb definitions for broot.
+#
+# broot's stock "edit" verb runs "$EDITOR {file}" directly, which would
+# hand every file its own bare helix invocation. opener.sh replaces that
+# with the pane-stacking logic described there, so file selection behaves
+# like an IDE's file tree instead of spawning editors ad hoc. apply_to
+# stays "text_file": that's what lets a non-text file fall through to
+# broot's own default (xdg-open) instead of being handed to helix.
+###############################################################
+
+verbs: [
+    {
+        invocation: edit
+        shortcut: e
+        key: enter
+        apply_to: text_file
+        external: "~/.config/broot/opener.sh {file}"
+        leave_broot: false
+    }
+]

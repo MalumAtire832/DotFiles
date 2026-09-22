@@ -1,0 +1,12 @@
+###############################################################
+# broot configuration.
+#
+# Only the settings that differ from broot's defaults are kept here
+# rather than the full generated file's worth of commented defaults;
+# see https://dystroy.org/broot for the rest.
+###############################################################
+
+imports: [
+    verbs.hjson
+    oxocarbon.hjson
+]
