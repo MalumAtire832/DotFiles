@@ -17,3 +17,9 @@ text-color=#dde1e6
 
 [urgency=high]
 border-color=#ee5396
+
+# Brave fires this every time picture-in-picture activates (see the
+# for_window rule in sway's config that tiles it), purely informational
+# and not something to acknowledge each time.
+[app-name="Brave" summary="Video Popout"]
+invisible=1

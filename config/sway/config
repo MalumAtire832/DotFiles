@@ -32,6 +32,13 @@ output $monitor_left   bg $surface solid_color
 output $monitor_center bg ~/.config/sway/wallpapers/wallpaper_center_1.jpg fill
 output $monitor_right  bg $surface solid_color
 
+# "auto" picks vertical or horizontal per workspace based on which way it's
+# longer, which — since $monitor_left/$monitor_right are rotated 90/270 into
+# portrait (1440x2560) while $monitor_center stays landscape (3840x2160) —
+# gives the two side monitors a vertical default split and the center one a
+# horizontal default, without naming any output here.
+default_orientation auto
+
 #-------------------------------#
 #   Per-monitor workspace sets   #
 #-------------------------------#
@@ -93,6 +100,19 @@ for_window [instance="Godot_Engine"] floating enable
 # Blender
 for_window [app_id="blender"] floating enable
 for_window [app_id="blender" title=".* - Blender [0-9]+\.[0-9]+"] floating disable
+
+# Brave's picture-in-picture popup always carries this exact title,
+# regardless of the site or video; app_id is blank on it so title is the
+# only stable match. Tiled, not floating: both side monitors' workspaces
+# use a top-level splitv, so a new window is appended as the last vertical
+# slot; repeated "move up" walks it to the top regardless of how many
+# windows were already open (extra calls once it's first are harmless
+# no-ops). "resize set" must come after the moves, not before: each move
+# reparents the window into a new container and resets its size to an even
+# split with its sibling, which silently undoes an earlier resize. The
+# center monitor defaults to splith (see default_orientation above), where
+# this box does not come out at a fixed size; that's accepted.
+for_window [title="^Picture in picture$"] floating disable, move up, move up, move up, move up, move up, resize set width 1430px height 805px
 
 #-------------------------#
 #   Input configuration   #
