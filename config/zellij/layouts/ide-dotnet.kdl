@@ -21,6 +21,12 @@ layout {
                 }
                 pane {
                     name "Console"
+                    // Explicit "." rather than leaving cwd unset: a bare
+                    // pane with no command resolves its cwd through a
+                    // different code path than broot/hx's command panes,
+                    // and doesn't reliably pick up --default-cwd on its
+                    // own. This forces it through cwd composition instead.
+                    cwd "."
                     size "20%"
                 }
             }
