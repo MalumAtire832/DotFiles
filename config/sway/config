@@ -96,6 +96,10 @@ for_window [app_id="obsidian"] focus_on_window_activation focus
 for_window [class="Godot"] floating enable
 for_window [class="Godot" title=".* - Godot Engine$"] floating disable
 for_window [instance="Godot_Engine"] floating enable
+# The class rules above only reach Godot under XWayland. Launched with
+# --display-driver wayland it has an app_id instead, and the project manager
+# gets its own one, separate from the editor's.
+for_window [app_id="org.godotengine.ProjectManager"] floating enable
 
 # Blender
 for_window [app_id="blender"] floating enable
