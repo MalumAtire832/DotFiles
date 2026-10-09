@@ -122,13 +122,19 @@ for_window [title="^Picture in picture$"] floating disable, move up, move up, mo
 #   Input configuration   #
 #-------------------------#
 input type:keyboard {
-    xkb_layout us
-    xkb_variant dvorak
+    # Dvorak first so it is the default. Plain us is second, for games that
+    # bind to keysyms rather than physical keys and scatter WASD under Dvorak.
+    # The empty second variant is what makes it plain QWERTY.
+    xkb_layout us,us
+    xkb_variant dvorak,
     repeat_delay 250
     repeat_rate 35
 
     xkb_options compose:caps
 }
+
+# Toggle Dvorak/QWERTY. Sway's own bindings follow the active layout too.
+bindsym $mod+F12 input type:keyboard xkb_switch_layout next
 
 
 
